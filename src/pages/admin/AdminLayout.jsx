@@ -3,7 +3,6 @@ import { NavLink, Outlet } from 'react-router-dom';
 const TABS = [
   { to: '/admin', label: 'Insurers', end: true },
   { to: '/admin/policies', label: 'Policy Catalog' },
-  { to: '/admin/quote-grid', label: 'Insurance Quote Grid' },
   { to: '/admin/quick-rule', label: 'Quick Commission Rule' },
   { to: '/admin/rules', label: 'Commission Rules' },
   { to: '/admin/overrides', label: 'Agent Overrides' },

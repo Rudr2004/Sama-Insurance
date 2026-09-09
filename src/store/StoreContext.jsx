@@ -27,16 +27,6 @@ export function StoreProvider({ children }) {
       deletePolicy: (id) => dispatch({ type: ActionTypes.DELETE_POLICY, payload: { id } }),
       togglePolicyActive: (id) => dispatch({ type: ActionTypes.TOGGLE_POLICY_ACTIVE, payload: { id } }),
 
-      addQuoteRow: (row) => dispatch({ type: ActionTypes.ADD_QUOTE_ROW, payload: { id: row.id || nextId('quote'), published: true, ...row } }),
-      bulkAddQuoteRows: (rows) =>
-        dispatch({
-          type: ActionTypes.BULK_ADD_QUOTE_ROWS,
-          payload: rows.map((row) => ({ id: row.id || nextId('quote'), published: true, ...row })),
-        }),
-      updateQuoteRow: (row) => dispatch({ type: ActionTypes.UPDATE_QUOTE_ROW, payload: row }),
-      deleteQuoteRow: (id) => dispatch({ type: ActionTypes.DELETE_QUOTE_ROW, payload: { id } }),
-      toggleQuoteRowPublished: (id) => dispatch({ type: ActionTypes.TOGGLE_QUOTE_ROW_PUBLISHED, payload: { id } }),
-
       resetDemoData: () => dispatch({ type: ActionTypes.RESET_DEMO_DATA }),
     }),
     []

@@ -1,77 +1,105 @@
 import { Badge } from '../../components/common/Badge.jsx';
 import { Button } from '../../components/common/Button.jsx';
-import { getOptionLabel } from '../../config/parameters.js';
+import { getOptionLabel, getModelsForMake } from '../../config/parameters.js';
+
+function modelLabel(make, model) {
+  const found = getModelsForMake(make).find((m) => m.value === model);
+  return found ? found.label : model;
+}
+
+function Field({ label, value }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-sm font-medium text-slate-800 break-words">{value || '—'}</p>
+    </div>
+  );
+}
+
+function money(v) {
+  return v || v === 0 ? `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—';
+}
 
 export function PolicyDetailModal({ policy, insurerName, onClose }) {
+  const idv = policy.idvBreakup;
+
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl">
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <Badge tone="brand">{insurerName}</Badge>
               <Badge tone="slate">{getOptionLabel('vehicleClass', policy.category)}</Badge>
+              <Badge tone="violet">{getOptionLabel('policyType', policy.policyType)}</Badge>
             </div>
-            <h3 className="font-semibold text-lg text-slate-900">{policy.name}</h3>
-            {policy.tagline && <p className="text-sm text-slate-500 mt-0.5">{policy.tagline}</p>}
+            <h3 className="font-semibold text-lg text-slate-900">
+              {getOptionLabel('vehicleMake', policy.vehicleMake)} {modelLabel(policy.vehicleMake, policy.vehicleModel)}
+              {policy.vehicleVariant ? ` (${policy.vehicleVariant})` : ''}
+            </h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none px-1">
             ✕
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-5">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-center">
-              <p className="text-xs text-slate-400">Starting premium</p>
-              <p className="font-bold text-slate-900">₹{policy.premiumStartingAt}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-center">
-              <p className="text-xs text-slate-400">IDV range</p>
-              <p className="font-bold text-slate-900">{policy.idvRangeLabel || '—'}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-center">
-              <p className="text-xs text-slate-400">Claim settlement</p>
-              <p className="font-bold text-slate-900">{policy.claimSettlementRatio != null ? `${policy.claimSettlementRatio}%` : '—'}</p>
+        <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
+          <div>
+            <h4 className="text-sm font-semibold text-slate-800 mb-2">Vehicle Details</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+              <Field label="Company (Make)" value={getOptionLabel('vehicleMake', policy.vehicleMake)} />
+              <Field label="Model" value={modelLabel(policy.vehicleMake, policy.vehicleModel)} />
+              <Field label="Variant" value={policy.vehicleVariant} />
+              <Field label="RTO" value={policy.rto} />
+              <Field label="Fuel type" value={getOptionLabel('fuelType', policy.fuelType)} />
+              <Field label="Cubic capacity" value={policy.cubicCapacity ? `${policy.cubicCapacity} cc` : null} />
+              <Field label="Seating capacity" value={policy.seatingCapacity} />
+              <Field label="Year of manufacture" value={policy.yearOfManufacture} />
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-slate-800 mb-2">What's covered</h4>
-            <ul className="space-y-1.5">
-              {policy.coverageHighlights.map((item, idx) => (
-                <li key={idx} className="flex gap-2 text-sm text-slate-700">
-                  <span className="text-emerald-600 shrink-0">✓</span>
-                  {item}
-                </li>
-              ))}
-              {policy.coverageHighlights.length === 0 && <p className="text-sm text-slate-400 italic">Not specified.</p>}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-slate-800 mb-2">Features & add-ons</h4>
-            <div className="flex flex-wrap gap-1.5">
-              {policy.features.map((item, idx) => (
-                <Badge key={idx} tone="violet">
-                  {item}
-                </Badge>
-              ))}
-              {policy.features.length === 0 && <p className="text-sm text-slate-400 italic">Not specified.</p>}
+            <h4 className="text-sm font-semibold text-slate-800 mb-2">Insured's Declared Value (IDV)</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+              <Field label="Total IDV" value={money(policy.idv)} />
+              <Field label="Vehicle" value={idv ? money(idv.vehicle) : '—'} />
+              <Field label="Accessories" value={idv ? money(idv.accessories) : '—'} />
+              <Field label="Electrical fittings" value={idv ? money(idv.electricalFittings) : '—'} />
+              <Field label="Non-electrical fittings" value={idv ? money(idv.nonElectricalFittings) : '—'} />
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-slate-800 mb-2">Exclusions</h4>
-            <ul className="space-y-1.5">
-              {policy.exclusions.map((item, idx) => (
-                <li key={idx} className="flex gap-2 text-sm text-slate-600">
-                  <span className="text-red-500 shrink-0">✕</span>
-                  {item}
-                </li>
-              ))}
-              {policy.exclusions.length === 0 && <p className="text-sm text-slate-400 italic">Not specified.</p>}
-            </ul>
+            <h4 className="text-sm font-semibold text-slate-800 mb-2">Premium Schedule</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+              <Field label="Own Damage (OD) premium" value={money(policy.premium.odPremium)} />
+              <Field label="Third-Party (TP) / liability premium" value={money(policy.premium.tpPremium)} />
+              <Field label="Add-on premium total" value={money(policy.premium.addonPremium)} />
+              <Field label="Net premium" value={money(policy.premium.netPremium)} />
+              <Field label={`GST (${policy.premium.gstPercent}%)`} value={money(policy.premium.gstAmount)} />
+              <Field label="Total discount" value={policy.premium.totalDiscountPercent ? `${policy.premium.totalDiscountPercent}%` : '—'} />
+            </div>
+            <div className="mt-3 rounded-lg bg-brand-50 border border-brand-100 px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-brand-800">Final Premium (incl. GST)</span>
+              <span className="text-xl font-bold text-brand-900">{money(policy.premium.finalPremium)}</span>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-slate-800 mb-2">No Claim Bonus</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+              <Field label="NCB" value={policy.ncbPercent || policy.ncbPercent === 0 ? `${policy.ncbPercent}%` : null} />
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-slate-800 mb-2">Policy Validity &amp; Service</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+              <Field label="Period from" value={policy.periodFrom} />
+              <Field label="Period to" value={policy.periodTo} />
+              <Field label="Claim settlement ratio" value={policy.claimSettlementRatio != null ? `${policy.claimSettlementRatio}%` : null} />
+              <Field label="Cashless garages" value={policy.cashlessGarages ? policy.cashlessGarages.toLocaleString('en-IN') : null} />
+            </div>
           </div>
         </div>
 

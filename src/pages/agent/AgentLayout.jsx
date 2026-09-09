@@ -1,8 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
 const TABS = [
-  { to: '/agent', label: 'Insurance Quotes', end: true },
-  { to: '/agent/commission-checker', label: 'Commission Checker' },
+  { to: '/agent', label: 'Commission Checker', end: true },
   { to: '/agent/policies', label: 'Browse Policies' },
 ];
 

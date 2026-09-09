@@ -2,7 +2,6 @@
 // Context/Provider so the reducer itself is easy to unit test if needed.
 
 import { seedInsurers, seedAgents, seedRules, seedAgentOverrides, seedPolicies } from '../data/seed.js';
-import { seedQuoteGrid } from '../data/quoteGridSeed.js';
 
 let idCounter = 1;
 export function nextId(prefix) {
@@ -16,7 +15,6 @@ export const initialState = {
   rules: seedRules,
   agentOverrides: seedAgentOverrides,
   policies: seedPolicies,
-  quoteGrid: seedQuoteGrid,
 };
 
 export const ActionTypes = {
@@ -38,12 +36,6 @@ export const ActionTypes = {
   UPDATE_POLICY: 'UPDATE_POLICY',
   DELETE_POLICY: 'DELETE_POLICY',
   TOGGLE_POLICY_ACTIVE: 'TOGGLE_POLICY_ACTIVE',
-
-  ADD_QUOTE_ROW: 'ADD_QUOTE_ROW',
-  BULK_ADD_QUOTE_ROWS: 'BULK_ADD_QUOTE_ROWS',
-  UPDATE_QUOTE_ROW: 'UPDATE_QUOTE_ROW',
-  DELETE_QUOTE_ROW: 'DELETE_QUOTE_ROW',
-  TOGGLE_QUOTE_ROW_PUBLISHED: 'TOGGLE_QUOTE_ROW_PUBLISHED',
 
   RESET_DEMO_DATA: 'RESET_DEMO_DATA',
 };
@@ -124,27 +116,6 @@ export function storeReducer(state, action) {
       return {
         ...state,
         policies: state.policies.map((p) => (p.id === action.payload.id ? { ...p, active: !p.active } : p)),
-      };
-
-    case ActionTypes.ADD_QUOTE_ROW:
-      return { ...state, quoteGrid: [...state.quoteGrid, action.payload] };
-
-    case ActionTypes.BULK_ADD_QUOTE_ROWS:
-      return { ...state, quoteGrid: [...state.quoteGrid, ...action.payload] };
-
-    case ActionTypes.UPDATE_QUOTE_ROW:
-      return {
-        ...state,
-        quoteGrid: state.quoteGrid.map((q) => (q.id === action.payload.id ? action.payload : q)),
-      };
-
-    case ActionTypes.DELETE_QUOTE_ROW:
-      return { ...state, quoteGrid: state.quoteGrid.filter((q) => q.id !== action.payload.id) };
-
-    case ActionTypes.TOGGLE_QUOTE_ROW_PUBLISHED:
-      return {
-        ...state,
-        quoteGrid: state.quoteGrid.map((q) => (q.id === action.payload.id ? { ...q, published: !q.published } : q)),
       };
 
     case ActionTypes.RESET_DEMO_DATA:

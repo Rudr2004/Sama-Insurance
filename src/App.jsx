@@ -5,7 +5,6 @@ import { Button } from './components/common/Button.jsx';
 import { AdminLayout } from './pages/admin/AdminLayout.jsx';
 import { InsurerManagement } from './pages/admin/InsurerManagement.jsx';
 import { PolicyCatalog } from './pages/admin/PolicyCatalog.jsx';
-import { QuoteGridManagement } from './pages/admin/QuoteGridManagement.jsx';
 import { QuickCommissionRule } from './pages/admin/QuickCommissionRule.jsx';
 import { RuleList } from './pages/admin/RuleList.jsx';
 import { AgentOverrides } from './pages/admin/AgentOverrides.jsx';
@@ -13,7 +12,6 @@ import { RuleSimulator } from './pages/admin/RuleSimulator.jsx';
 import { AgentLayout } from './pages/agent/AgentLayout.jsx';
 import { AgentPortal } from './pages/agent/AgentPortal.jsx';
 import { PolicyBrowse } from './pages/agent/PolicyBrowse.jsx';
-import { InsuranceQuotes } from './pages/agent/InsuranceQuotes.jsx';
 
 function Header() {
   const { resetDemoData } = useStore();
@@ -57,15 +55,13 @@ function AppShell() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<InsurerManagement />} />
             <Route path="policies" element={<PolicyCatalog />} />
-            <Route path="quote-grid" element={<QuoteGridManagement />} />
             <Route path="quick-rule" element={<QuickCommissionRule />} />
             <Route path="rules" element={<RuleList />} />
             <Route path="overrides" element={<AgentOverrides />} />
             <Route path="simulate" element={<RuleSimulator />} />
           </Route>
           <Route path="/agent" element={<AgentLayout />}>
-            <Route index element={<InsuranceQuotes />} />
-            <Route path="commission-checker" element={<AgentPortal />} />
+            <Route index element={<AgentPortal />} />
             <Route path="policies" element={<PolicyBrowse />} />
           </Route>
           <Route path="*" element={<Navigate to="/agent" replace />} />
