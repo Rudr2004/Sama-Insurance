@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
+import { useToast } from '../../components/common/ToastContext.jsx';
 import { RTO_OPTIONS, VEHICLE_MAKES, getOptionLabel } from '../../config/parameters.js';
 import { summarizeConditionTree } from '../../engine/ruleSummary.js';
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
@@ -30,6 +31,7 @@ function emptyForm() {
 
 export function QuickCommissionRule() {
   const { state, addRule, addOverride, deleteRule, deleteOverride } = useStore();
+  const toast = useToast();
   const [form, setForm] = useState(emptyForm());
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
@@ -56,7 +58,10 @@ export function QuickCommissionRule() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      toast.error('Missing required fields', 'Select at least one RTO or Vehicle Company, and enter a commission value.');
+      return;
+    }
 
     const conditionTree = buildConditionTree(form);
     const outcome = { type: form.outcomeType, value: Number(form.outcomeValue) };
@@ -65,30 +70,54 @@ export function QuickCommissionRule() {
       ? form.vehicleMakeList.map((v) => getOptionLabel('vehicleMake', v)).join(', ')
       : 'any vehicle company';
 
-    if (form.agentId === ANY_AGENT) {
-      addRule({
-        name: `Quick rule: ${rtoLabel} + ${makeLabel}`,
-        insurerId: form.insurerId,
-        scopeType: 'rto',
-        priority: Number(form.priority) || 5,
-        active: true,
-        conditionTree,
-        outcome,
-        effectiveFrom: null,
-        effectiveTo: null,
-        createdVia: 'quickRule',
-      });
-    } else {
-      addOverride({
-        agentId: form.agentId,
-        name: `Quick override: ${agentName(form.agentId)} — ${rtoLabel} + ${makeLabel}`,
-        insurerId: form.insurerId,
-        conditionTree: conditionTree.conditions.length > 0 ? conditionTree : null,
-        outcome,
-        createdVia: 'quickRule',
-      });
+    try {
+      if (form.agentId === ANY_AGENT) {
+        addRule({
+          name: `Quick rule: ${rtoLabel} + ${makeLabel}`,
+          insurerId: form.insurerId,
+          scopeType: 'rto',
+          priority: Number(form.priority) || 5,
+          active: true,
+          conditionTree,
+          outcome,
+          effectiveFrom: null,
+          effectiveTo: null,
+          createdVia: 'quickRule',
+        });
+        toast.success('Quick rule created', `${rtoLabel} + ${makeLabel} is now live.`);
+      } else {
+        addOverride({
+          agentId: form.agentId,
+          name: `Quick override: ${agentName(form.agentId)} — ${rtoLabel} + ${makeLabel}`,
+          insurerId: form.insurerId,
+          conditionTree: conditionTree.conditions.length > 0 ? conditionTree : null,
+          outcome,
+          createdVia: 'quickRule',
+        });
+        toast.success('Quick override created', `Broker override saved for ${agentName(form.agentId)}.`);
+      }
+      setForm(emptyForm());
+    } catch (err) {
+      toast.error('Could not create quick rule', err?.message);
     }
-    setForm(emptyForm());
+  };
+
+  const handleRemoveOverride = (ov) => {
+    try {
+      deleteOverride(ov.id);
+      toast.success('Override removed', `"${ov.name}" was deleted.`);
+    } catch (err) {
+      toast.error('Could not remove override', err?.message);
+    }
+  };
+
+  const handleRemoveRule = (r) => {
+    try {
+      deleteRule(r.id);
+      toast.success('Rule removed', `"${r.name}" was deleted.`);
+    } catch (err) {
+      toast.error('Could not remove rule', err?.message);
+    }
   };
 
   return (
@@ -164,7 +193,9 @@ export function QuickCommissionRule() {
                 <option value={ANY_AGENT}>Any broker / agent</option>
                 {state.agents.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} ({a.id})
+                    {a.name}
+                    {a.designation ? ` — ${a.designation}` : ''}
+                    {a.branch ? ` (${a.branch})` : ''}
                   </option>
                 ))}
               </Select>
@@ -228,7 +259,7 @@ export function QuickCommissionRule() {
                 </div>
                 <p className="text-sm text-slate-700 mt-1">{ov.name}</p>
               </div>
-              <Button size="sm" variant="danger" onClick={() => deleteOverride(ov.id)}>
+              <Button size="sm" variant="danger" onClick={() => handleRemoveOverride(ov)}>
                 Remove
               </Button>
             </div>
@@ -243,7 +274,7 @@ export function QuickCommissionRule() {
                 </div>
                 <p className="text-sm text-slate-700 mt-1">{r.name}</p>
               </div>
-              <Button size="sm" variant="danger" onClick={() => deleteRule(r.id)}>
+              <Button size="sm" variant="danger" onClick={() => handleRemoveRule(r)}>
                 Remove
               </Button>
             </div>

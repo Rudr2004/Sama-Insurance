@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
+import { useToast } from '../../components/common/ToastContext.jsx';
 import { RuleForm } from './RuleForm.jsx';
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
 import { Button } from '../../components/common/Button.jsx';
@@ -14,17 +15,61 @@ const TIER_BADGE_TONE = {
 
 export function RuleList() {
   const { state, deleteRule, duplicateRule, toggleRuleActive } = useStore();
+  const toast = useToast();
   const [view, setView] = useState({ mode: 'list' }); // { mode: 'list' } | { mode: 'create' } | { mode: 'edit', rule }
 
   const insurerName = (id) => (id === 'ALL' ? 'All insurers' : state.insurers.find((i) => i.id === id)?.name ?? id);
 
   const sortedRules = [...state.rules].sort((a, b) => a.priority - b.priority);
 
+  const handleDelete = (rule) => {
+    if (!confirm(`Delete rule "${rule.name}"?`)) return;
+    try {
+      deleteRule(rule.id);
+      toast.success('Rule deleted', `"${rule.name}" was removed.`);
+    } catch (err) {
+      toast.error('Could not delete rule', err?.message);
+    }
+  };
+
+  const handleDuplicate = (rule) => {
+    try {
+      duplicateRule(rule.id);
+      toast.success('Rule duplicated', `A copy of "${rule.name}" was created (disabled by default).`);
+    } catch (err) {
+      toast.error('Could not duplicate rule', err?.message);
+    }
+  };
+
+  const handleToggleActive = (rule) => {
+    try {
+      toggleRuleActive(rule.id);
+      toast.success(rule.active ? 'Rule disabled' : 'Rule enabled', `"${rule.name}" is now ${rule.active ? 'inactive' : 'active'}.`);
+    } catch (err) {
+      toast.error('Could not update rule', err?.message);
+    }
+  };
+
   if (view.mode === 'create') {
-    return <RuleForm onDone={() => setView({ mode: 'list' })} />;
+    return (
+      <RuleForm
+        onDone={(result) => {
+          setView({ mode: 'list' });
+          if (result?.name) toast.success('Rule created', `"${result.name}" is now live.`);
+        }}
+      />
+    );
   }
   if (view.mode === 'edit') {
-    return <RuleForm initialRule={view.rule} onDone={() => setView({ mode: 'list' })} />;
+    return (
+      <RuleForm
+        initialRule={view.rule}
+        onDone={(result) => {
+          setView({ mode: 'list' });
+          if (result?.name) toast.success('Rule updated', `"${result.name}" was saved successfully.`);
+        }}
+      />
+    );
   }
 
   return (
@@ -65,19 +110,13 @@ export function RuleList() {
                 <Button size="sm" onClick={() => setView({ mode: 'edit', rule })}>
                   Edit
                 </Button>
-                <Button size="sm" onClick={() => duplicateRule(rule.id)}>
+                <Button size="sm" onClick={() => handleDuplicate(rule)}>
                   Duplicate
                 </Button>
-                <Button size="sm" onClick={() => toggleRuleActive(rule.id)}>
+                <Button size="sm" onClick={() => handleToggleActive(rule)}>
                   {rule.active ? 'Disable' : 'Enable'}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => {
-                    if (confirm(`Delete rule "${rule.name}"?`)) deleteRule(rule.id);
-                  }}
-                >
+                <Button size="sm" variant="danger" onClick={() => handleDelete(rule)}>
                   Delete
                 </Button>
               </div>

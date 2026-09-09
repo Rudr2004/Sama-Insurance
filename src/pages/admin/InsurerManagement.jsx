@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
+import { useToast } from '../../components/common/ToastContext.jsx';
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { FormField, TextInput } from '../../components/common/FormField.jsx';
@@ -61,17 +62,34 @@ function InsurerFormModal({ insurer, onSave, onClose }) {
 
 export function InsurerManagement() {
   const { state, addInsurer, updateInsurer, deleteInsurer } = useStore();
+  const toast = useToast();
   const [modalInsurer, setModalInsurer] = useState(undefined); // undefined = closed, null = "add new", object = edit
 
   const rulesCountByInsurer = (insurerId) => state.rules.filter((r) => r.insurerId === insurerId).length;
 
   const handleSave = (insurer) => {
-    if (insurer.id) {
-      updateInsurer(insurer);
-    } else {
-      addInsurer(insurer);
+    try {
+      if (insurer.id) {
+        updateInsurer(insurer);
+        toast.success('Insurer updated', `${insurer.name} was saved successfully.`);
+      } else {
+        addInsurer(insurer);
+        toast.success('Insurer added', `${insurer.name} is now available for rules and policies.`);
+      }
+      setModalInsurer(undefined);
+    } catch (err) {
+      toast.error('Could not save insurer', err?.message);
     }
-    setModalInsurer(undefined);
+  };
+
+  const handleDelete = (insurer) => {
+    if (!confirm(`Delete ${insurer.name}? This also removes its ${rulesCountByInsurer(insurer.id)} rule(s).`)) return;
+    try {
+      deleteInsurer(insurer.id);
+      toast.success('Insurer deleted', `${insurer.name} and its rules were removed.`);
+    } catch (err) {
+      toast.error('Could not delete insurer', err?.message);
+    }
   };
 
   return (
@@ -115,15 +133,7 @@ export function InsurerManagement() {
                         <Button size="sm" onClick={() => setModalInsurer(insurer)}>
                           Edit
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => {
-                            if (confirm(`Delete ${insurer.name}? This also removes its ${rulesCountByInsurer(insurer.id)} rule(s).`)) {
-                              deleteInsurer(insurer.id);
-                            }
-                          }}
-                        >
+                        <Button size="sm" variant="danger" onClick={() => handleDelete(insurer)}>
                           Delete
                         </Button>
                       </div>

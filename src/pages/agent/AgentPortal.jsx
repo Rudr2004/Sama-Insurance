@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
 import { evaluateCommission } from '../../engine/evaluateCommission.js';
 import { VehiclePolicyForm } from '../../components/common/VehiclePolicyForm.jsx';
@@ -31,10 +30,19 @@ const initialInput = {
 };
 
 export function AgentPortal() {
-  const { state } = useStore();
-  const [input, setInput] = useState(initialInput);
-  const [results, setResults] = useState(null);
-  const [submittedInput, setSubmittedInput] = useState(null);
+  const { state, setCommissionCheckerSession } = useStore();
+
+  // Persisted in the global store (not local component state) so the
+  // entered vehicle details and computed results survive navigating away
+  // to another tab and back — only cleared by an explicit Reset.
+  const session = state.commissionCheckerSession;
+  const input = session?.input ?? initialInput;
+  const results = session?.results ?? null;
+  const submittedInput = session?.submittedInput ?? null;
+
+  const setInput = (nextInput) => {
+    setCommissionCheckerSession({ input: nextInput, results, submittedInput });
+  };
 
   const canSubmit =
     input.rto &&
@@ -56,14 +64,12 @@ export function AgentPortal() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const normalized = { ...input, vehicleAge: Number(input.vehicleAge) || 0 };
-    setResults(evaluateCommission(normalized, state.insurers, state.rules, state.agentOverrides));
-    setSubmittedInput(input);
+    const nextResults = evaluateCommission(normalized, state.insurers, state.rules, state.agentOverrides);
+    setCommissionCheckerSession({ input, results: nextResults, submittedInput: input });
   };
 
   const handleReset = () => {
-    setInput(initialInput);
-    setResults(null);
-    setSubmittedInput(null);
+    setCommissionCheckerSession(null);
   };
 
   return (
@@ -100,7 +106,7 @@ export function AgentPortal() {
               subtitle="Every rate shown here is traceable to a specific rule — see the reason under each card."
             />
             <CardBody>
-              <CommissionResultsList results={results} />
+              <CommissionResultsList results={results} insurers={state.insurers} submittedInput={submittedInput} />
             </CardBody>
           </Card>
         </>

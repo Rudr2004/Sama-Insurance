@@ -15,12 +15,19 @@ export const initialState = {
   rules: seedRules,
   agentOverrides: seedAgentOverrides,
   policies: seedPolicies,
+  // Persists the Commission Checker's last entry + results across tab
+  // navigation within the same session (survives unmount, not a reload).
+  commissionCheckerSession: null,
 };
 
 export const ActionTypes = {
   ADD_INSURER: 'ADD_INSURER',
   UPDATE_INSURER: 'UPDATE_INSURER',
   DELETE_INSURER: 'DELETE_INSURER',
+
+  ADD_AGENT: 'ADD_AGENT',
+  UPDATE_AGENT: 'UPDATE_AGENT',
+  DELETE_AGENT: 'DELETE_AGENT',
 
   ADD_RULE: 'ADD_RULE',
   UPDATE_RULE: 'UPDATE_RULE',
@@ -36,6 +43,8 @@ export const ActionTypes = {
   UPDATE_POLICY: 'UPDATE_POLICY',
   DELETE_POLICY: 'DELETE_POLICY',
   TOGGLE_POLICY_ACTIVE: 'TOGGLE_POLICY_ACTIVE',
+
+  SET_COMMISSION_CHECKER_SESSION: 'SET_COMMISSION_CHECKER_SESSION',
 
   RESET_DEMO_DATA: 'RESET_DEMO_DATA',
 };
@@ -56,6 +65,22 @@ export function storeReducer(state, action) {
         ...state,
         insurers: state.insurers.filter((i) => i.id !== action.payload.id),
         rules: state.rules.filter((r) => r.insurerId !== action.payload.id),
+      };
+
+    case ActionTypes.ADD_AGENT:
+      return { ...state, agents: [...state.agents, action.payload] };
+
+    case ActionTypes.UPDATE_AGENT:
+      return {
+        ...state,
+        agents: state.agents.map((a) => (a.id === action.payload.id ? { ...a, ...action.payload } : a)),
+      };
+
+    case ActionTypes.DELETE_AGENT:
+      return {
+        ...state,
+        agents: state.agents.filter((a) => a.id !== action.payload.id),
+        agentOverrides: state.agentOverrides.filter((o) => o.agentId !== action.payload.id),
       };
 
     case ActionTypes.ADD_RULE:
@@ -117,6 +142,9 @@ export function storeReducer(state, action) {
         ...state,
         policies: state.policies.map((p) => (p.id === action.payload.id ? { ...p, active: !p.active } : p)),
       };
+
+    case ActionTypes.SET_COMMISSION_CHECKER_SESSION:
+      return { ...state, commissionCheckerSession: action.payload };
 
     case ActionTypes.RESET_DEMO_DATA:
       return initialState;

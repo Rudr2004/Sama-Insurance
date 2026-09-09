@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
+import { useToast } from '../../components/common/ToastContext.jsx';
 import { ConditionTreeBuilder } from '../../components/conditionBuilder/ConditionTreeBuilder.jsx';
 import { makeEmptyGroup } from '../../components/conditionBuilder/conditionTreeUtils.js';
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
@@ -21,10 +22,14 @@ function emptyOverride() {
 
 function OverrideFormModal({ agents, insurers, onSave, onClose }) {
   const [form, setForm] = useState(emptyOverride());
+  const toast = useToast();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.agentId || form.outcome.value === '') return;
+    if (!form.agentId || form.outcome.value === '') {
+      toast.error('Missing required fields', 'Agent and outcome value are both required.');
+      return;
+    }
     onSave({
       agentId: form.agentId,
       name: form.name.trim() || undefined,
@@ -49,7 +54,9 @@ function OverrideFormModal({ agents, insurers, onSave, onClose }) {
                   <option value="">Select agent…</option>
                   {agents.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.id})
+                      {a.name}
+                      {a.designation ? ` — ${a.designation}` : ''}
+                      {a.branch ? ` (${a.branch})` : ''}
                     </option>
                   ))}
                 </Select>
@@ -126,10 +133,21 @@ function OverrideFormModal({ agents, insurers, onSave, onClose }) {
 
 export function AgentOverrides() {
   const { state, addOverride, deleteOverride } = useStore();
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
 
   const agentName = (id) => state.agents.find((a) => a.id === id)?.name ?? id;
   const insurerName = (id) => (id === 'ALL' || !id ? 'All insurers' : state.insurers.find((i) => i.id === id)?.name ?? id);
+
+  const handleDelete = (ov) => {
+    if (!confirm(`Remove override for ${agentName(ov.agentId)}?`)) return;
+    try {
+      deleteOverride(ov.id);
+      toast.success('Override removed', `The commission override for ${agentName(ov.agentId)} was deleted.`);
+    } catch (err) {
+      toast.error('Could not remove override', err?.message);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -162,13 +180,7 @@ export function AgentOverrides() {
                     {ov.conditionTree ? `Scoped to: ${summarizeConditionTree(ov.conditionTree)}` : 'Applies unconditionally for this agent + insurer'}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => {
-                    if (confirm(`Remove override for ${agentName(ov.agentId)}?`)) deleteOverride(ov.id);
-                  }}
-                >
+                <Button size="sm" variant="danger" onClick={() => handleDelete(ov)}>
                   Remove
                 </Button>
               </div>
@@ -182,8 +194,13 @@ export function AgentOverrides() {
           agents={state.agents}
           insurers={state.insurers}
           onSave={(payload) => {
-            addOverride(payload);
-            setModalOpen(false);
+            try {
+              addOverride(payload);
+              toast.success('Override created', `Agent-specific override saved for ${agentName(payload.agentId)}.`);
+              setModalOpen(false);
+            } catch (err) {
+              toast.error('Could not create override', err?.message);
+            }
           }}
           onClose={() => setModalOpen(false)}
         />

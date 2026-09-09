@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
+import { useToast } from '../../components/common/ToastContext.jsx';
 import { ConditionTreeBuilder } from '../../components/conditionBuilder/ConditionTreeBuilder.jsx';
 import { makeEmptyGroup } from '../../components/conditionBuilder/conditionTreeUtils.js';
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
@@ -27,13 +28,17 @@ function emptyRule() {
 
 export function RuleForm({ initialRule, onDone }) {
   const { state, addRule, updateRule } = useStore();
+  const toast = useToast();
   const [rule, setRule] = useState(initialRule ? { ...initialRule } : emptyRule());
 
   const isEdit = Boolean(initialRule?.id);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!rule.name.trim() || rule.outcome.value === '') return;
+    if (!rule.name.trim() || rule.outcome.value === '') {
+      toast.error('Missing required fields', 'Rule name and outcome value are both required.');
+      return;
+    }
     const payload = {
       ...rule,
       priority: Number(rule.priority) || 0,
@@ -41,12 +46,16 @@ export function RuleForm({ initialRule, onDone }) {
       effectiveFrom: rule.effectiveFrom || null,
       effectiveTo: rule.effectiveTo || null,
     };
-    if (isEdit) {
-      updateRule(payload);
-    } else {
-      addRule(payload);
+    try {
+      if (isEdit) {
+        updateRule(payload);
+      } else {
+        addRule(payload);
+      }
+      onDone(payload);
+    } catch (err) {
+      toast.error(isEdit ? 'Could not save changes' : 'Could not create rule', err?.message);
     }
-    onDone();
   };
 
   return (

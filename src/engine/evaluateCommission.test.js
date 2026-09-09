@@ -3,17 +3,18 @@ import { evaluateCommission } from './evaluateCommission.js';
 import { seedInsurers, seedRules, seedAgentOverrides } from '../data/seed.js';
 
 function run(input) {
-  return evaluateCommission(input, seedInsurers, seedRules, seedAgentOverrides, '2026-06-01');
+  return evaluateCommission(input, seedInsurers, seedRules, seedAgentOverrides, '2026-09-01');
 }
 
 describe('evaluateCommission', () => {
   it('falls back to insurer base commission when nothing matches', () => {
     const results = run({
-      rto: 'DL-01',
-      vehicleClass: 'private_car',
+      rto: 'TS-08',
+      vehicleClass: 'two_wheeler',
       fuelType: 'petrol',
       vehicleAge: 10,
-      policyType: 'renewal',
+      policyType: 'package',
+      caseType: 'renewal',
       agentId: 'AGT-9999',
     });
     const magma = results.find((r) => r.insurerId === 'magma_hdi');
@@ -24,24 +25,26 @@ describe('evaluateCommission', () => {
   it('applies RTO-specific rule for Ahmedabad two-wheeler on ICICI', () => {
     const results = run({
       rto: 'GJ-01',
-      vehicleClass: 'two_wheeler',
+      vehicleClass: 'private_car',
       fuelType: 'petrol',
       vehicleAge: 3,
-      policyType: 'new',
+      policyType: 'package',
+      caseType: 'new',
       agentId: 'AGT-9999',
     });
     const icici = results.find((r) => r.insurerId === 'icici_lombard');
     expect(icici.precedenceTier).toBe('rto');
-    expect(icici.outcome.value).toBe(14);
+    expect(icici.outcome.value).toBe(27.5);
   });
 
   it('agent-specific override beats RTO rule for the same agent+insurer', () => {
     const results = run({
       rto: 'GJ-01',
-      vehicleClass: 'two_wheeler',
+      vehicleClass: 'private_car',
       fuelType: 'petrol',
       vehicleAge: 3,
-      policyType: 'new',
+      policyType: 'package',
+      caseType: 'new',
       agentId: 'AGT-1001', // has an override on icici_lombard
     });
     const icici = results.find((r) => r.insurerId === 'icici_lombard');
@@ -49,80 +52,170 @@ describe('evaluateCommission', () => {
     expect(icici.outcome.value).toBe(16);
   });
 
-  it('evaluates a compound OR/AND rule correctly (diesel Rajkot branch)', () => {
-    const results = run({
-      rto: 'GJ-27',
-      vehicleClass: 'private_car',
-      fuelType: 'diesel',
-      vehicleAge: 4,
-      policyType: 'new',
-      agentId: 'AGT-9999',
-    });
+  it('evaluates a compound OR/AND rule correctly (diesel branch matches)', () => {
+    const rules = [
+      {
+        id: 'compound_rule',
+        name: 'Diesel Rajkot cars OR any Two-Wheeler',
+        insurerId: 'bajaj_allianz',
+        scopeType: 'vehicleParam',
+        priority: 15,
+        active: true,
+        conditionTree: {
+          logic: 'OR',
+          conditions: [
+            {
+              logic: 'AND',
+              conditions: [
+                { field: 'rto', operator: 'in', value: ['GJ-27'] },
+                { field: 'fuelType', operator: 'equals', value: 'diesel' },
+              ],
+            },
+            { field: 'vehicleClass', operator: 'equals', value: 'two_wheeler' },
+          ],
+        },
+        outcome: { type: 'percentage', value: 12 },
+      },
+    ];
+    const results = evaluateCommission(
+      { rto: 'GJ-27', vehicleClass: 'private_car', fuelType: 'diesel', vehicleAge: 4, policyType: 'new', agentId: 'AGT-9999' },
+      seedInsurers,
+      rules,
+      [],
+      '2026-06-01'
+    );
     const bajaj = results.find((r) => r.insurerId === 'bajaj_allianz');
     expect(bajaj.precedenceTier).toBe('vehicleParam');
     expect(bajaj.outcome.value).toBe(12);
   });
 
   it('evaluates a compound OR/AND rule correctly (two-wheeler branch, different RTO/fuel)', () => {
-    const results = run({
-      rto: 'MH-12',
-      vehicleClass: 'two_wheeler',
-      fuelType: 'electric',
-      vehicleAge: 1,
-      policyType: 'new',
-      agentId: 'AGT-9999',
-    });
+    const rules = [
+      {
+        id: 'compound_rule',
+        name: 'Diesel Rajkot cars OR any Two-Wheeler',
+        insurerId: 'bajaj_allianz',
+        scopeType: 'vehicleParam',
+        priority: 15,
+        active: true,
+        conditionTree: {
+          logic: 'OR',
+          conditions: [
+            {
+              logic: 'AND',
+              conditions: [
+                { field: 'rto', operator: 'in', value: ['GJ-27'] },
+                { field: 'fuelType', operator: 'equals', value: 'diesel' },
+              ],
+            },
+            { field: 'vehicleClass', operator: 'equals', value: 'two_wheeler' },
+          ],
+        },
+        outcome: { type: 'percentage', value: 12 },
+      },
+    ];
+    const results = evaluateCommission(
+      { rto: 'MH-12', vehicleClass: 'two_wheeler', fuelType: 'electric', vehicleAge: 1, policyType: 'new', agentId: 'AGT-9999' },
+      seedInsurers,
+      rules,
+      [],
+      '2026-06-01'
+    );
     const bajaj = results.find((r) => r.insurerId === 'bajaj_allianz');
     expect(bajaj.precedenceTier).toBe('vehicleParam');
     expect(bajaj.outcome.value).toBe(12);
   });
 
   it('does not match the compound rule when neither branch is satisfied', () => {
-    const results = run({
-      rto: 'MH-12',
-      vehicleClass: 'private_car',
-      fuelType: 'petrol',
-      vehicleAge: 5,
-      policyType: 'new',
-      agentId: 'AGT-9999',
-    });
+    const rules = [
+      {
+        id: 'compound_rule',
+        name: 'Diesel Rajkot cars OR any Two-Wheeler',
+        insurerId: 'bajaj_allianz',
+        scopeType: 'vehicleParam',
+        priority: 15,
+        active: true,
+        conditionTree: {
+          logic: 'OR',
+          conditions: [
+            {
+              logic: 'AND',
+              conditions: [
+                { field: 'rto', operator: 'in', value: ['GJ-27'] },
+                { field: 'fuelType', operator: 'equals', value: 'diesel' },
+              ],
+            },
+            { field: 'vehicleClass', operator: 'equals', value: 'two_wheeler' },
+          ],
+        },
+        outcome: { type: 'percentage', value: 12 },
+      },
+    ];
+    const results = evaluateCommission(
+      { rto: 'MH-12', vehicleClass: 'private_car', fuelType: 'petrol', vehicleAge: 5, policyType: 'new', agentId: 'AGT-9999' },
+      seedInsurers,
+      rules,
+      [],
+      '2026-06-01'
+    );
     const bajaj = results.find((r) => r.insurerId === 'bajaj_allianz');
     expect(bajaj.precedenceTier).toBe('insurerDefault');
   });
 
   it('applies flat-amount outcome for Mumbai South RTO rule', () => {
-    const results = run({
-      rto: 'MH-01',
-      vehicleClass: 'private_car',
-      fuelType: 'petrol',
-      vehicleAge: 5,
-      policyType: 'new',
-      agentId: 'AGT-9999',
-    });
+    const rules = [
+      {
+        id: 'flat_rule',
+        name: 'Mumbai South RTO — flat bonus',
+        insurerId: 'tata_aig',
+        scopeType: 'rto',
+        priority: 10,
+        active: true,
+        conditionTree: { logic: 'AND', conditions: [{ field: 'rto', operator: 'in', value: ['MH-01'] }] },
+        outcome: { type: 'flat', value: 1500 },
+      },
+    ];
+    const results = evaluateCommission(
+      { rto: 'MH-01', vehicleClass: 'private_car', fuelType: 'petrol', vehicleAge: 5, policyType: 'new', agentId: 'AGT-9999' },
+      seedInsurers,
+      rules,
+      [],
+      '2026-06-01'
+    );
     const tataAig = results.find((r) => r.insurerId === 'tata_aig');
     expect(tataAig.precedenceTier).toBe('rto');
     expect(tataAig.outcome).toEqual({ type: 'flat', value: 1500 });
   });
 
   it('respects vehicle age "between" operator boundaries', () => {
-    const withinRange = run({
-      rto: 'DL-01',
-      vehicleClass: 'private_car',
-      fuelType: 'petrol',
-      vehicleAge: 2,
-      policyType: 'new',
-      agentId: 'AGT-9999',
-    });
-    const outOfRange = run({
-      rto: 'DL-01',
-      vehicleClass: 'private_car',
-      fuelType: 'petrol',
-      vehicleAge: 3,
-      policyType: 'new',
-      agentId: 'AGT-9999',
-    });
-    const hdfcWithin = withinRange.find((r) => r.insurerId === 'hdfc_ergo');
-    const hdfcOutOfRange = outOfRange.find((r) => r.insurerId === 'hdfc_ergo');
+    const rules = [
+      {
+        id: 'age_rule',
+        name: 'New vehicles (0-2 yrs) — Private Car premium',
+        insurerId: 'hdfc_ergo',
+        scopeType: 'vehicleParam',
+        priority: 20,
+        active: true,
+        conditionTree: {
+          logic: 'AND',
+          conditions: [
+            { field: 'vehicleAge', operator: 'between', value: [0, 2] },
+            { field: 'vehicleClass', operator: 'equals', value: 'private_car' },
+          ],
+        },
+        outcome: { type: 'percentage', value: 13 },
+      },
+    ];
+    const runAge = (vehicleAge) =>
+      evaluateCommission(
+        { rto: 'DL-01', vehicleClass: 'private_car', fuelType: 'petrol', vehicleAge, policyType: 'new', agentId: 'AGT-9999' },
+        seedInsurers,
+        rules,
+        [],
+        '2026-06-01'
+      );
+    const hdfcWithin = runAge(2).find((r) => r.insurerId === 'hdfc_ergo');
+    const hdfcOutOfRange = runAge(3).find((r) => r.insurerId === 'hdfc_ergo');
     expect(hdfcWithin.precedenceTier).toBe('vehicleParam');
     expect(hdfcWithin.outcome.value).toBe(13);
     expect(hdfcOutOfRange.precedenceTier).toBe('insurerDefault');
@@ -338,5 +431,84 @@ describe('evaluateCommission', () => {
     const tataAig = results.find((r) => r.insurerId === 'tata_aig');
     expect(tataAig.precedenceTier).toBe('vehicleParam');
     expect(tataAig.outcome.value).toBe(5);
+  });
+
+  it('applies the Magma GCV weight-band rule for a ≤2.5T Gujarat truck', () => {
+    const results = run({
+      rto: 'GJ-01',
+      vehicleClass: 'commercial_gcv',
+      fuelType: 'diesel',
+      vehicleAge: 2,
+      weightBand: 'le_2_5t',
+      policyType: 'package',
+      caseType: 'new',
+      agentId: 'AGT-9999',
+    });
+    const magma = results.find((r) => r.insurerId === 'magma_hdi');
+    expect(magma.precedenceTier).toBe('vehicleParam');
+    expect(magma.outcome.value).toBe(56);
+  });
+
+  it('does not apply the ≤2.5T GCV rule to a different weight band', () => {
+    const results = run({
+      rto: 'GJ-01',
+      vehicleClass: 'commercial_gcv',
+      fuelType: 'diesel',
+      vehicleAge: 2,
+      weightBand: '20_40t',
+      policyType: 'package',
+      caseType: 'new',
+      agentId: 'AGT-9999',
+    });
+    const magma = results.find((r) => r.insurerId === 'magma_hdi');
+    expect(magma.precedenceTier).not.toBe('vehicleParam');
+  });
+
+  it('applies the Magma tractor (MISC-D) rule using the vehicleSubclass condition', () => {
+    // rule_magma_tractor_delhi_new is scoped to vehicleParam; use an RTO with
+    // no Magma rto-tier rule so the rto tier doesn't outrank it and mask the
+    // vehicleParam match being tested here.
+    const rules = seedRules.filter((r) => r.id !== 'rule_magma_delhi_petrol' && r.id !== 'rule_magma_delhi_diesel');
+    const results = evaluateCommission(
+      {
+        rto: 'DL-01',
+        vehicleClass: 'misc_d',
+        vehicleSubclass: 'tractor_new',
+        fuelType: 'diesel',
+        vehicleAge: 1,
+        policyType: 'package',
+        caseType: 'new',
+        agentId: 'AGT-9999',
+      },
+      seedInsurers,
+      rules,
+      seedAgentOverrides,
+      '2026-09-01'
+    );
+    const magma = results.find((r) => r.insurerId === 'magma_hdi');
+    expect(magma.precedenceTier).toBe('vehicleParam');
+    expect(magma.outcome.value).toBe(24);
+  });
+
+  it('does not apply the tractor rule to a harvester in the same MISC-D class', () => {
+    const rules = seedRules.filter((r) => r.id !== 'rule_magma_delhi_petrol' && r.id !== 'rule_magma_delhi_diesel');
+    const results = evaluateCommission(
+      {
+        rto: 'DL-01',
+        vehicleClass: 'misc_d',
+        vehicleSubclass: 'harvester_new',
+        fuelType: 'diesel',
+        vehicleAge: 1,
+        policyType: 'package',
+        caseType: 'new',
+        agentId: 'AGT-9999',
+      },
+      seedInsurers,
+      rules,
+      seedAgentOverrides,
+      '2026-09-01'
+    );
+    const magma = results.find((r) => r.insurerId === 'magma_hdi');
+    expect(magma.precedenceTier).toBe('insurerDefault');
   });
 });

@@ -7,10 +7,11 @@ import {
   RTO_OPTIONS,
   getMakesForClass,
   getModelsForMake,
+  getFuelTypesForModel,
 } from '../../config/parameters.js';
-import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
+import { useToast } from '../../components/common/ToastContext.jsx';
 import { Button } from '../../components/common/Button.jsx';
-import { FormField, TextInput, TextArea, Select } from '../../components/common/FormField.jsx';
+import { FormField, TextInput, Select } from '../../components/common/FormField.jsx';
 
 function emptyPolicy() {
   return {
@@ -20,17 +21,9 @@ function emptyPolicy() {
     category: '',
     policyType: '',
 
-    insuredName: '',
-    insuredAddress: '',
-    insuredMobile: '',
-    insuredEmail: '',
-
     vehicleMake: '',
     vehicleModel: '',
     vehicleVariant: '',
-    registrationNumber: '',
-    engineNumber: '',
-    chassisNumber: '',
     cubicCapacity: '',
     seatingCapacity: '',
     yearOfManufacture: '',
@@ -51,8 +44,6 @@ function emptyPolicy() {
     totalDiscountPercent: '',
 
     ncbPercent: '',
-    previousInsurer: '',
-    hypothecationBank: '',
 
     policyIssueDate: '',
     periodFrom: '',
@@ -80,29 +71,64 @@ function flattenPolicy(policy) {
   };
 }
 
+// A numbered-section wrapper so the long form reads as a guided sequence
+// rather than one flat wall of fields — mirrors the step feel of a real
+// policy-issuance workflow.
+function Section({ step, title, description, children }) {
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <div className="flex items-start gap-3 px-5 py-3.5 bg-slate-50 border-b border-slate-200">
+        <span className="shrink-0 w-6 h-6 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+          {step}
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+        </div>
+      </div>
+      <div className="px-5 py-5">{children}</div>
+    </div>
+  );
+}
+
 export function PolicyForm({ initialPolicy, onDone }) {
   const { state, addPolicy, updatePolicy } = useStore();
+  const toast = useToast();
   const isEdit = Boolean(initialPolicy?.id);
   const [form, setForm] = useState(() => (initialPolicy ? flattenPolicy(initialPolicy) : emptyPolicy()));
 
   const makes = useMemo(() => getMakesForClass(form.category), [form.category]);
   const models = useMemo(() => getModelsForMake(form.vehicleMake), [form.vehicleMake]);
+  const availableFuelTypes = useMemo(
+    () => (form.vehicleModel ? getFuelTypesForModel(form.vehicleMake, form.vehicleModel) : FUEL_TYPES.map((f) => f.value)),
+    [form.vehicleMake, form.vehicleModel]
+  );
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
+  const handleModelChange = (vehicleModel) => {
+    const fuelOptions = getFuelTypesForModel(form.vehicleMake, vehicleModel);
+    set({ vehicleModel, fuelType: fuelOptions.length === 1 ? fuelOptions[0] : '' });
+  };
+
+  const num = (v) => (v === '' ? undefined : Number(v));
+
+  const odPremiumPreview = num(form.odPremium) ?? 0;
+  const tpPremiumPreview = num(form.tpPremium) ?? 0;
+  const addonPremiumPreview = num(form.addonPremium) ?? 0;
+  const gstPercentPreview = num(form.gstPercent) ?? 18;
+  const netPremiumPreview = odPremiumPreview + tpPremiumPreview + addonPremiumPreview;
+  const gstAmountPreview = Math.round(
+    ((odPremiumPreview + addonPremiumPreview) * gstPercentPreview) / 100 + (tpPremiumPreview * gstPercentPreview) / 100
+  );
+  const finalPremiumPreview = Math.round(netPremiumPreview + gstAmountPreview);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.insurerId || !form.policyNumber.trim() || !form.insuredName.trim() || !form.registrationNumber.trim()) return;
-
-    const num = (v) => (v === '' ? undefined : Number(v));
-
-    const odPremium = num(form.odPremium) ?? 0;
-    const tpPremium = num(form.tpPremium) ?? 0;
-    const addonPremium = num(form.addonPremium) ?? 0;
-    const gstPercent = num(form.gstPercent) ?? 18;
-    const netPremium = odPremium + tpPremium + addonPremium;
-    const gstAmount = Math.round(((odPremium + addonPremium) * gstPercent) / 100 + (tpPremium * gstPercent) / 100);
-    const finalPremium = Math.round(netPremium + gstAmount);
+    if (!form.insurerId || !form.policyNumber.trim() || !form.vehicleMake || !form.vehicleModel) {
+      toast.error('Missing required fields', 'Insurer, policy number, vehicle company, and model are all required.');
+      return;
+    }
 
     const payload = {
       id: initialPolicy?.id,
@@ -112,17 +138,9 @@ export function PolicyForm({ initialPolicy, onDone }) {
       category: form.category,
       policyType: form.policyType,
 
-      insuredName: form.insuredName.trim(),
-      insuredAddress: form.insuredAddress.trim(),
-      insuredMobile: form.insuredMobile.trim(),
-      insuredEmail: form.insuredEmail.trim(),
-
       vehicleMake: form.vehicleMake,
       vehicleModel: form.vehicleModel,
       vehicleVariant: form.vehicleVariant.trim(),
-      registrationNumber: form.registrationNumber.trim().toUpperCase(),
-      engineNumber: form.engineNumber.trim().toUpperCase(),
-      chassisNumber: form.chassisNumber.trim().toUpperCase(),
       cubicCapacity: num(form.cubicCapacity),
       seatingCapacity: num(form.seatingCapacity),
       yearOfManufacture: num(form.yearOfManufacture),
@@ -142,19 +160,17 @@ export function PolicyForm({ initialPolicy, onDone }) {
           : null,
 
       premium: {
-        odPremium,
-        tpPremium,
-        addonPremium,
-        netPremium,
-        gstPercent,
-        gstAmount,
-        finalPremium,
+        odPremium: odPremiumPreview,
+        tpPremium: tpPremiumPreview,
+        addonPremium: addonPremiumPreview,
+        netPremium: netPremiumPreview,
+        gstPercent: gstPercentPreview,
+        gstAmount: gstAmountPreview,
+        finalPremium: finalPremiumPreview,
         totalDiscountPercent: num(form.totalDiscountPercent) ?? 0,
       },
 
       ncbPercent: num(form.ncbPercent) ?? 0,
-      previousInsurer: form.previousInsurer.trim(),
-      hypothecationBank: form.hypothecationBank.trim(),
 
       policyIssueDate: form.policyIssueDate || null,
       periodFrom: form.periodFrom || null,
@@ -165,24 +181,34 @@ export function PolicyForm({ initialPolicy, onDone }) {
       active: form.active,
     };
 
-    if (isEdit) {
-      updatePolicy(payload);
-    } else {
-      addPolicy(payload);
+    try {
+      if (isEdit) {
+        updatePolicy(payload);
+      } else {
+        addPolicy(payload);
+      }
+      onDone(payload);
+    } catch (err) {
+      toast.error(isEdit ? 'Could not save changes' : 'Could not upload policy', err?.message);
     }
-    onDone();
   };
 
   return (
-    <Card>
-      <CardHeader
-        title={isEdit ? `Edit Policy Certificate: ${initialPolicy.policyNumber}` : 'Upload New Policy Certificate'}
-        subtitle="Enter the details exactly as they appear on the insurer's Certificate cum Policy Schedule."
-      />
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">
+            {isEdit ? `Edit Policy: ${initialPolicy.policyNumber}` : 'Upload New Policy Certificate'}
+          </h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Vehicle and premium detail only — no policyholder-identifying information is collected here.
+          </p>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <CardBody className="space-y-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Policy</p>
+        <div className="px-5 py-5 space-y-4">
+          <Section step={1} title="Policy" description="Which insurer and what kind of cover.">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <FormField label="Insurer" required>
                 <Select value={form.insurerId} onChange={(e) => set({ insurerId: e.target.value })}>
@@ -215,31 +241,15 @@ export function PolicyForm({ initialPolicy, onDone }) {
                 </Select>
               </FormField>
             </div>
-          </div>
+          </Section>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Insured (Policyholder)</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Insured name" required>
-                <TextInput value={form.insuredName} onChange={(e) => set({ insuredName: e.target.value })} placeholder="e.g. Arjun Mehta" />
-              </FormField>
-              <FormField label="Address">
-                <TextArea value={form.insuredAddress} onChange={(e) => set({ insuredAddress: e.target.value })} rows={2} />
-              </FormField>
-              <FormField label="Mobile">
-                <TextInput value={form.insuredMobile} onChange={(e) => set({ insuredMobile: e.target.value })} />
-              </FormField>
-              <FormField label="Email">
-                <TextInput type="email" value={form.insuredEmail} onChange={(e) => set({ insuredEmail: e.target.value })} />
-              </FormField>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Vehicle</p>
+          <Section step={2} title="Vehicle" description="Company, model, and specs — no registration or identity details.">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <FormField label="Vehicle class" required>
-                <Select value={form.category} onChange={(e) => set({ category: e.target.value, vehicleMake: '', vehicleModel: '' })}>
+                <Select
+                  value={form.category}
+                  onChange={(e) => set({ category: e.target.value, vehicleMake: '', vehicleModel: '', fuelType: '' })}
+                >
                   <option value="">Select…</option>
                   {VEHICLE_CLASSES.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -248,8 +258,12 @@ export function PolicyForm({ initialPolicy, onDone }) {
                   ))}
                 </Select>
               </FormField>
-              <FormField label="Make" required>
-                <Select value={form.vehicleMake} onChange={(e) => set({ vehicleMake: e.target.value, vehicleModel: '' })} disabled={!form.category}>
+              <FormField label="Company (Make)" required>
+                <Select
+                  value={form.vehicleMake}
+                  onChange={(e) => set({ vehicleMake: e.target.value, vehicleModel: '', fuelType: '' })}
+                  disabled={!form.category}
+                >
                   <option value="">Select…</option>
                   {makes.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -259,7 +273,7 @@ export function PolicyForm({ initialPolicy, onDone }) {
                 </Select>
               </FormField>
               <FormField label="Model" required>
-                <Select value={form.vehicleModel} onChange={(e) => set({ vehicleModel: e.target.value })} disabled={!form.vehicleMake}>
+                <Select value={form.vehicleModel} onChange={(e) => handleModelChange(e.target.value)} disabled={!form.vehicleMake}>
                   <option value="">Select…</option>
                   {models.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -272,15 +286,6 @@ export function PolicyForm({ initialPolicy, onDone }) {
                 <TextInput value={form.vehicleVariant} onChange={(e) => set({ vehicleVariant: e.target.value })} placeholder="e.g. VXI" />
               </FormField>
 
-              <FormField label="Registration number" required>
-                <TextInput value={form.registrationNumber} onChange={(e) => set({ registrationNumber: e.target.value })} placeholder="e.g. GJ01AX7070" />
-              </FormField>
-              <FormField label="Engine number">
-                <TextInput value={form.engineNumber} onChange={(e) => set({ engineNumber: e.target.value })} />
-              </FormField>
-              <FormField label="Chassis number">
-                <TextInput value={form.chassisNumber} onChange={(e) => set({ chassisNumber: e.target.value })} />
-              </FormField>
               <FormField label="RTO" required>
                 <Select value={form.rto} onChange={(e) => set({ rto: e.target.value })}>
                   <option value="">Select RTO…</option>
@@ -291,11 +296,14 @@ export function PolicyForm({ initialPolicy, onDone }) {
                   ))}
                 </Select>
               </FormField>
-
-              <FormField label="Fuel type" required>
-                <Select value={form.fuelType} onChange={(e) => set({ fuelType: e.target.value })}>
+              <FormField
+                label="Fuel type"
+                required
+                hint={form.vehicleModel ? undefined : 'Select a model first'}
+              >
+                <Select value={form.fuelType} onChange={(e) => set({ fuelType: e.target.value })} disabled={!form.vehicleModel}>
                   <option value="">Select…</option>
-                  {FUEL_TYPES.map((f) => (
+                  {FUEL_TYPES.filter((f) => availableFuelTypes.includes(f.value)).map((f) => (
                     <option key={f.value} value={f.value}>
                       {f.label}
                     </option>
@@ -308,18 +316,17 @@ export function PolicyForm({ initialPolicy, onDone }) {
               <FormField label="Seating capacity">
                 <TextInput type="number" value={form.seatingCapacity} onChange={(e) => set({ seatingCapacity: e.target.value })} />
               </FormField>
+
               <FormField label="Year of manufacture">
                 <TextInput type="number" value={form.yearOfManufacture} onChange={(e) => set({ yearOfManufacture: e.target.value })} />
               </FormField>
-
               <FormField label="Registration date">
                 <TextInput type="date" value={form.registrationDate} onChange={(e) => set({ registrationDate: e.target.value })} />
               </FormField>
             </div>
-          </div>
+          </Section>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Insured's Declared Value (IDV)</p>
+          <Section step={3} title="Insured's Declared Value (IDV)" description="Total sum assured, with an optional part-wise breakup.">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <FormField label="Total IDV (₹)" required>
                 <TextInput type="number" value={form.idv} onChange={(e) => set({ idv: e.target.value })} />
@@ -337,10 +344,9 @@ export function PolicyForm({ initialPolicy, onDone }) {
                 <TextInput type="number" value={form.idvNonElectricalFittings} onChange={(e) => set({ idvNonElectricalFittings: e.target.value })} />
               </FormField>
             </div>
-          </div>
+          </Section>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Premium Schedule (₹)</p>
+          <Section step={4} title="Premium Schedule" description="OD, TP, add-ons and GST — final premium is calculated live as you type.">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <FormField label="Own Damage (OD) premium">
                 <TextInput type="number" value={form.odPremium} onChange={(e) => set({ odPremium: e.target.value })} />
@@ -358,26 +364,32 @@ export function PolicyForm({ initialPolicy, onDone }) {
                 <TextInput type="number" value={form.totalDiscountPercent} onChange={(e) => set({ totalDiscountPercent: e.target.value })} />
               </FormField>
             </div>
-            <p className="text-xs text-slate-400 mt-2">Net premium, GST amount, and final premium are calculated automatically on save.</p>
-          </div>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">No Claim Bonus & Prior Insurance</p>
+            <div className="mt-4 rounded-lg bg-brand-50 border border-brand-100 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex gap-6 text-xs text-brand-800">
+                <span>
+                  Net premium <strong className="font-mono">₹{netPremiumPreview.toLocaleString('en-IN')}</strong>
+                </span>
+                <span>
+                  GST amount <strong className="font-mono">₹{gstAmountPreview.toLocaleString('en-IN')}</strong>
+                </span>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-wide text-brand-600">Final premium</p>
+                <p className="text-xl font-bold text-brand-900 font-mono">₹{finalPremiumPreview.toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+          </Section>
+
+          <Section step={5} title="No Claim Bonus">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField label="NCB (%)">
                 <TextInput type="number" value={form.ncbPercent} onChange={(e) => set({ ncbPercent: e.target.value })} />
               </FormField>
-              <FormField label="Previous insurer">
-                <TextInput value={form.previousInsurer} onChange={(e) => set({ previousInsurer: e.target.value })} placeholder="e.g. New Policy" />
-              </FormField>
-              <FormField label="Hypothecation / financier" hint="Bank name, if vehicle is on loan">
-                <TextInput value={form.hypothecationBank} onChange={(e) => set({ hypothecationBank: e.target.value })} />
-              </FormField>
             </div>
-          </div>
+          </Section>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Policy Dates & Service Metrics</p>
+          <Section step={6} title="Policy Dates & Service Metrics">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <FormField label="Policy issue date">
                 <TextInput type="date" value={form.policyIssueDate} onChange={(e) => set({ policyIssueDate: e.target.value })} />
@@ -395,19 +407,20 @@ export function PolicyForm({ initialPolicy, onDone }) {
                 <TextInput type="number" value={form.cashlessGarages} onChange={(e) => set({ cashlessGarages: e.target.value })} />
               </FormField>
             </div>
-          </div>
+          </Section>
 
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors w-fit">
             <input
               type="checkbox"
               checked={form.active}
               onChange={(e) => set({ active: e.target.checked })}
               className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
-            Published (visible to agents/users)
+            <span className="text-sm text-slate-700">Published (visible to agents/users)</span>
           </label>
-        </CardBody>
-        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2">
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50 rounded-b-xl">
           <Button type="button" variant="ghost" onClick={onDone}>
             Cancel
           </Button>
@@ -416,6 +429,6 @@ export function PolicyForm({ initialPolicy, onDone }) {
           </Button>
         </div>
       </form>
-    </Card>
+    </div>
   );
 }

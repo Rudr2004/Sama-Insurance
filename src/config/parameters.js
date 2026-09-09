@@ -50,57 +50,113 @@ export const RTO_OPTIONS = [
   { value: 'WB-06', label: 'WB-06 — Kolkata' },
 ];
 
+// The 5 top-level categories real Indian motor broker payout grids use
+// (TW / PC / GCV / PCV / MISC-D). Subclasses mirror how each category is
+// actually underwritten:
+//   - TW (two_wheeler): by engine cc band, since risk & payout differ by cc
+//   - PC (private_car): by market segment (Mini/Compact/Mid-Size/MPV-SUV/
+//     High-End/Ultra-High-End) — this is the dimension grids key off, not
+//     body style
+//   - GCV (commercial_gcv): by Gross Vehicle Weight (GVW) band — the
+//     industry-standard way goods carriers are rated, plus a 3W goods line
+//   - PCV (commercial_pcv): by use-type (3W auto, taxi, school bus vs.
+//     other bus — school buses carry distinct risk/regulatory treatment)
+//   - MISC-D (misc_d): the "miscellaneous & special types" catch-all —
+//     tractors, construction equipment, harvesters, e-rickshaw/e-loader
 export const VEHICLE_CLASSES = [
   {
     value: 'private_car',
-    label: 'Private Car',
+    label: 'Private Car (PC)',
     subclasses: [
-      { value: 'hatchback', label: 'Hatchback' },
-      { value: 'sedan', label: 'Sedan' },
-      { value: 'suv', label: 'SUV' },
+      { value: 'mini', label: 'Mini' },
+      { value: 'compact', label: 'Compact' },
+      { value: 'mid_size', label: 'Mid-Size' },
+      { value: 'mpv_suv', label: 'MPV / SUV' },
+      { value: 'high_end', label: 'High-End' },
+      { value: 'ultra_high_end', label: 'Ultra High-End' },
     ],
   },
   {
     value: 'two_wheeler',
-    label: 'Two-Wheeler',
+    label: 'Two-Wheeler (TW)',
     subclasses: [
-      { value: 'scooter', label: 'Scooter' },
-      { value: 'motorcycle', label: 'Motorcycle' },
-      { value: 'electric_2w', label: 'Electric 2W' },
+      { value: 'tw_lt75cc', label: '<75cc' },
+      { value: 'tw_75_150cc', label: '75-150cc' },
+      { value: 'tw_150_350cc', label: '150-350cc' },
+      { value: 'tw_gt350cc', label: '>350cc' },
+      { value: 'tw_scooter', label: 'Scooter' },
     ],
   },
   {
     value: 'commercial_gcv',
     label: 'Commercial — GCV (Goods Carrying)',
     subclasses: [
-      { value: 'mini_truck', label: 'Mini Truck' },
-      { value: 'heavy_truck', label: 'Heavy Truck' },
+      { value: 'gcv_3w', label: 'GCV 3-Wheeler' },
+      { value: 'gcv_le_2_5t', label: '≤2.5T' },
+      { value: 'gcv_2_5_3_5t', label: '2.5T - 3.5T' },
+      { value: 'gcv_3_5_7_5t', label: '3.5T - 7.5T' },
+      { value: 'gcv_7_5_12t', label: '7.5T - 12T' },
+      { value: 'gcv_12_20t', label: '12T - 20T' },
+      { value: 'gcv_20_40t', label: '20T - 40T' },
+      { value: 'gcv_gt40t', label: '>40T' },
     ],
   },
   {
     value: 'commercial_pcv',
     label: 'Commercial — PCV (Passenger Carrying)',
     subclasses: [
-      { value: 'auto_rickshaw', label: 'Auto Rickshaw' },
-      { value: 'taxi', label: 'Taxi' },
-      { value: 'bus', label: 'Bus' },
+      { value: 'pcv_3w', label: 'PCV 3-Wheeler (Auto)' },
+      { value: 'pcv_taxi', label: 'Taxi' },
+      { value: 'pcv_bus_school', label: 'Bus - School' },
+      { value: 'pcv_bus_other', label: 'Bus - Other' },
+    ],
+  },
+  {
+    value: 'misc_d',
+    label: 'Miscellaneous & Special Types (MISC-D)',
+    subclasses: [
+      { value: 'tractor_new', label: 'Tractor - New' },
+      { value: 'tractor_old', label: 'Tractor - Old' },
+      { value: 'construction_equipment', label: 'Construction Equipment (CE)' },
+      { value: 'harvester_new', label: 'Harvester - New' },
+      { value: 'harvester_old', label: 'Harvester - Old' },
+      { value: 'e_rickshaw_loader', label: 'E-Rickshaw / E-Loader' },
     ],
   },
 ];
 
+// GCV Gross Vehicle Weight bands — the real dimension broker payout grids
+// key off for goods-carrying commission (e.g. Magma's grid pays 17.5% for
+// 12-20T but 21% for 20-40T on the same route). Kept as a separate field
+// (rather than folded only into vehicleSubclass) so it's directly usable
+// as its own rule-condition field, matching how underwriters describe it.
+export const GCV_WEIGHT_BANDS = [
+  { value: 'gcv_3w', label: 'GCV 3-Wheeler (no weight band)' },
+  { value: 'le_2_5t', label: '≤ 2.5 Tonnes' },
+  { value: '2_5_3_5t', label: '2.5 - 3.5 Tonnes' },
+  { value: '3_5_7_5t', label: '3.5 - 7.5 Tonnes' },
+  { value: '7_5_12t', label: '7.5 - 12 Tonnes' },
+  { value: '12_20t', label: '12 - 20 Tonnes' },
+  { value: '20_40t', label: '20 - 40 Tonnes' },
+  { value: 'gt_40t', label: '> 40 Tonnes' },
+];
+
 // Vehicle manufacturers ("Motor Company") with their models, per vehicle
 // class — drives the Make -> Model cascading dropdowns on the entry form.
+// Each model carries its own realistic `fuelTypes` list (values from
+// FUEL_TYPES below) so the Fuel Type field can be filtered to only what
+// that model is actually sold as — e.g. a Splendor never offers Diesel.
 export const VEHICLE_MAKES = [
   {
     value: 'maruti_suzuki',
     label: 'Maruti Suzuki',
     vehicleClass: 'private_car',
     models: [
-      { value: 'swift', label: 'Swift' },
-      { value: 'baleno', label: 'Baleno' },
-      { value: 'wagonr', label: 'WagonR' },
-      { value: 'brezza', label: 'Brezza' },
-      { value: 'ertiga', label: 'Ertiga' },
+      { value: 'swift', label: 'Swift', fuelTypes: ['petrol', 'cng'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 725000 },
+      { value: 'baleno', label: 'Baleno', fuelTypes: ['petrol', 'cng'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 790000 },
+      { value: 'wagonr', label: 'WagonR', fuelTypes: ['petrol', 'cng'], cubicCapacity: 998, seatingCapacity: 5, exShowroomPrice: 620000 },
+      { value: 'brezza', label: 'Brezza', fuelTypes: ['petrol', 'cng'], cubicCapacity: 1462, seatingCapacity: 5, exShowroomPrice: 1050000 },
+      { value: 'ertiga', label: 'Ertiga', fuelTypes: ['petrol', 'cng'], cubicCapacity: 1462, seatingCapacity: 7, exShowroomPrice: 1150000 },
     ],
   },
   {
@@ -108,10 +164,10 @@ export const VEHICLE_MAKES = [
     label: 'Hyundai',
     vehicleClass: 'private_car',
     models: [
-      { value: 'i20', label: 'i20' },
-      { value: 'creta', label: 'Creta' },
-      { value: 'venue', label: 'Venue' },
-      { value: 'verna', label: 'Verna' },
+      { value: 'i20', label: 'i20', fuelTypes: ['petrol'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 780000 },
+      { value: 'creta', label: 'Creta', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1493, seatingCapacity: 5, exShowroomPrice: 1850000 },
+      { value: 'venue', label: 'Venue', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 950000 },
+      { value: 'verna', label: 'Verna', fuelTypes: ['petrol'], cubicCapacity: 1497, seatingCapacity: 5, exShowroomPrice: 1150000 },
     ],
   },
   {
@@ -119,10 +175,10 @@ export const VEHICLE_MAKES = [
     label: 'Tata Motors',
     vehicleClass: 'private_car',
     models: [
-      { value: 'nexon', label: 'Nexon' },
-      { value: 'punch', label: 'Punch' },
-      { value: 'tiago', label: 'Tiago' },
-      { value: 'harrier', label: 'Harrier' },
+      { value: 'nexon', label: 'Nexon', fuelTypes: ['petrol', 'diesel', 'electric'], cubicCapacity: 1199, seatingCapacity: 5, exShowroomPrice: 1050000 },
+      { value: 'punch', label: 'Punch', fuelTypes: ['petrol', 'electric'], cubicCapacity: 1199, seatingCapacity: 5, exShowroomPrice: 700000 },
+      { value: 'tiago', label: 'Tiago', fuelTypes: ['petrol', 'cng', 'electric'], cubicCapacity: 1199, seatingCapacity: 5, exShowroomPrice: 600000 },
+      { value: 'harrier', label: 'Harrier', fuelTypes: ['diesel'], cubicCapacity: 1956, seatingCapacity: 5, exShowroomPrice: 1650000 },
     ],
   },
   {
@@ -130,9 +186,9 @@ export const VEHICLE_MAKES = [
     label: 'Honda Cars',
     vehicleClass: 'private_car',
     models: [
-      { value: 'city', label: 'City' },
-      { value: 'amaze', label: 'Amaze' },
-      { value: 'elevate', label: 'Elevate' },
+      { value: 'city', label: 'City', fuelTypes: ['petrol', 'hybrid'], cubicCapacity: 1498, seatingCapacity: 5, exShowroomPrice: 1520000 },
+      { value: 'amaze', label: 'Amaze', fuelTypes: ['petrol'], cubicCapacity: 1199, seatingCapacity: 5, exShowroomPrice: 850000 },
+      { value: 'elevate', label: 'Elevate', fuelTypes: ['petrol'], cubicCapacity: 1498, seatingCapacity: 5, exShowroomPrice: 1300000 },
     ],
   },
   {
@@ -140,10 +196,10 @@ export const VEHICLE_MAKES = [
     label: 'Mahindra',
     vehicleClass: 'private_car',
     models: [
-      { value: 'xuv700', label: 'XUV700' },
-      { value: 'scorpio_n', label: 'Scorpio-N' },
-      { value: 'thar', label: 'Thar' },
-      { value: 'xuv300', label: 'XUV300' },
+      { value: 'xuv700', label: 'XUV700', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 2198, seatingCapacity: 7, exShowroomPrice: 2350000 },
+      { value: 'scorpio_n', label: 'Scorpio-N', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 2198, seatingCapacity: 7, exShowroomPrice: 1650000 },
+      { value: 'thar', label: 'Thar', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1997, seatingCapacity: 4, exShowroomPrice: 1550000 },
+      { value: 'xuv300', label: 'XUV300', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 950000 },
     ],
   },
   {
@@ -151,10 +207,10 @@ export const VEHICLE_MAKES = [
     label: 'Toyota',
     vehicleClass: 'private_car',
     models: [
-      { value: 'innova_crysta', label: 'Innova Crysta' },
-      { value: 'fortuner', label: 'Fortuner' },
-      { value: 'glanza', label: 'Glanza' },
-      { value: 'urban_cruiser_hyryder', label: 'Urban Cruiser Hyryder' },
+      { value: 'innova_crysta', label: 'Innova Crysta', fuelTypes: ['diesel', 'petrol'], cubicCapacity: 2393, seatingCapacity: 7, exShowroomPrice: 2100000 },
+      { value: 'fortuner', label: 'Fortuner', fuelTypes: ['diesel', 'petrol'], cubicCapacity: 2755, seatingCapacity: 7, exShowroomPrice: 4200000 },
+      { value: 'glanza', label: 'Glanza', fuelTypes: ['petrol', 'hybrid'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 800000 },
+      { value: 'urban_cruiser_hyryder', label: 'Urban Cruiser Hyryder', fuelTypes: ['petrol', 'hybrid'], cubicCapacity: 1462, seatingCapacity: 5, exShowroomPrice: 1550000 },
     ],
   },
   {
@@ -162,9 +218,46 @@ export const VEHICLE_MAKES = [
     label: 'Kia',
     vehicleClass: 'private_car',
     models: [
-      { value: 'seltos', label: 'Seltos' },
-      { value: 'sonet', label: 'Sonet' },
-      { value: 'carens', label: 'Carens' },
+      { value: 'seltos', label: 'Seltos', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1497, seatingCapacity: 5, exShowroomPrice: 1650000 },
+      { value: 'sonet', label: 'Sonet', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 950000 },
+      { value: 'carens', label: 'Carens', fuelTypes: ['petrol', 'diesel'], cubicCapacity: 1497, seatingCapacity: 6, exShowroomPrice: 1450000 },
+    ],
+  },
+  {
+    value: 'skoda',
+    label: 'Skoda',
+    vehicleClass: 'private_car',
+    models: [
+      { value: 'kushaq', label: 'Kushaq', fuelTypes: ['petrol'], cubicCapacity: 1498, seatingCapacity: 5, exShowroomPrice: 1250000 },
+      { value: 'slavia', label: 'Slavia', fuelTypes: ['petrol'], cubicCapacity: 1498, seatingCapacity: 5, exShowroomPrice: 1200000 },
+    ],
+  },
+  {
+    value: 'volkswagen',
+    label: 'Volkswagen',
+    vehicleClass: 'private_car',
+    models: [
+      { value: 'taigun', label: 'Taigun', fuelTypes: ['petrol'], cubicCapacity: 1498, seatingCapacity: 5, exShowroomPrice: 1280000 },
+      { value: 'virtus', label: 'Virtus', fuelTypes: ['petrol'], cubicCapacity: 1498, seatingCapacity: 5, exShowroomPrice: 1230000 },
+    ],
+  },
+  {
+    value: 'renault',
+    label: 'Renault',
+    vehicleClass: 'private_car',
+    models: [
+      { value: 'kwid', label: 'Kwid', fuelTypes: ['petrol'], cubicCapacity: 999, seatingCapacity: 5, exShowroomPrice: 480000 },
+      { value: 'triber', label: 'Triber', fuelTypes: ['petrol', 'cng'], cubicCapacity: 999, seatingCapacity: 7, exShowroomPrice: 640000 },
+    ],
+  },
+  {
+    value: 'mg_motor',
+    label: 'MG Motor',
+    vehicleClass: 'private_car',
+    models: [
+      { value: 'hector', label: 'Hector', fuelTypes: ['petrol', 'diesel', 'hybrid'], cubicCapacity: 1497, seatingCapacity: 5, exShowroomPrice: 1650000 },
+      { value: 'astor', label: 'Astor', fuelTypes: ['petrol'], cubicCapacity: 1349, seatingCapacity: 5, exShowroomPrice: 1150000 },
+      { value: 'comet_ev', label: 'Comet EV', fuelTypes: ['electric'], cubicCapacity: 0, seatingCapacity: 4, exShowroomPrice: 850000 },
     ],
   },
   {
@@ -172,9 +265,9 @@ export const VEHICLE_MAKES = [
     label: 'Royal Enfield',
     vehicleClass: 'two_wheeler',
     models: [
-      { value: 'classic_350', label: 'Classic 350' },
-      { value: 'hunter_350', label: 'Hunter 350' },
-      { value: 'meteor_350', label: 'Meteor 350' },
+      { value: 'classic_350', label: 'Classic 350', fuelTypes: ['petrol'], cubicCapacity: 349, seatingCapacity: 2, exShowroomPrice: 195000 },
+      { value: 'hunter_350', label: 'Hunter 350', fuelTypes: ['petrol'], cubicCapacity: 349, seatingCapacity: 2, exShowroomPrice: 170000 },
+      { value: 'meteor_350', label: 'Meteor 350', fuelTypes: ['petrol'], cubicCapacity: 349, seatingCapacity: 2, exShowroomPrice: 205000 },
     ],
   },
   {
@@ -182,10 +275,10 @@ export const VEHICLE_MAKES = [
     label: 'Hero MotoCorp',
     vehicleClass: 'two_wheeler',
     models: [
-      { value: 'splendor', label: 'Splendor' },
-      { value: 'hf_deluxe', label: 'HF Deluxe' },
-      { value: 'passion', label: 'Passion' },
-      { value: 'xtreme', label: 'Xtreme' },
+      { value: 'splendor', label: 'Splendor', fuelTypes: ['petrol'], cubicCapacity: 97, seatingCapacity: 2, exShowroomPrice: 85000 },
+      { value: 'hf_deluxe', label: 'HF Deluxe', fuelTypes: ['petrol'], cubicCapacity: 97, seatingCapacity: 2, exShowroomPrice: 68000 },
+      { value: 'passion', label: 'Passion', fuelTypes: ['petrol'], cubicCapacity: 113, seatingCapacity: 2, exShowroomPrice: 92000 },
+      { value: 'xtreme', label: 'Xtreme', fuelTypes: ['petrol'], cubicCapacity: 160, seatingCapacity: 2, exShowroomPrice: 135000 },
     ],
   },
   {
@@ -193,9 +286,9 @@ export const VEHICLE_MAKES = [
     label: 'Honda Motorcycle & Scooter',
     vehicleClass: 'two_wheeler',
     models: [
-      { value: 'activa', label: 'Activa' },
-      { value: 'shine', label: 'Shine' },
-      { value: 'unicorn', label: 'Unicorn' },
+      { value: 'activa', label: 'Activa', fuelTypes: ['petrol', 'electric'], cubicCapacity: 110, seatingCapacity: 2, exShowroomPrice: 82000 },
+      { value: 'shine', label: 'Shine', fuelTypes: ['petrol'], cubicCapacity: 124, seatingCapacity: 2, exShowroomPrice: 88000 },
+      { value: 'unicorn', label: 'Unicorn', fuelTypes: ['petrol'], cubicCapacity: 162, seatingCapacity: 2, exShowroomPrice: 118000 },
     ],
   },
   {
@@ -203,9 +296,9 @@ export const VEHICLE_MAKES = [
     label: 'Bajaj Auto',
     vehicleClass: 'two_wheeler',
     models: [
-      { value: 'pulsar', label: 'Pulsar' },
-      { value: 'platina', label: 'Platina' },
-      { value: 'avenger', label: 'Avenger' },
+      { value: 'pulsar', label: 'Pulsar', fuelTypes: ['petrol'], cubicCapacity: 199, seatingCapacity: 2, exShowroomPrice: 155000 },
+      { value: 'platina', label: 'Platina', fuelTypes: ['petrol'], cubicCapacity: 100, seatingCapacity: 2, exShowroomPrice: 72000 },
+      { value: 'avenger', label: 'Avenger', fuelTypes: ['petrol'], cubicCapacity: 220, seatingCapacity: 2, exShowroomPrice: 175000 },
     ],
   },
   {
@@ -213,9 +306,38 @@ export const VEHICLE_MAKES = [
     label: 'TVS Motor',
     vehicleClass: 'two_wheeler',
     models: [
-      { value: 'jupiter', label: 'Jupiter' },
-      { value: 'apache', label: 'Apache' },
-      { value: 'ntorq', label: 'NTORQ' },
+      { value: 'jupiter', label: 'Jupiter', fuelTypes: ['petrol', 'electric'], cubicCapacity: 110, seatingCapacity: 2, exShowroomPrice: 85000 },
+      { value: 'apache', label: 'Apache', fuelTypes: ['petrol'], cubicCapacity: 160, seatingCapacity: 2, exShowroomPrice: 128000 },
+      { value: 'ntorq', label: 'NTORQ', fuelTypes: ['petrol'], cubicCapacity: 125, seatingCapacity: 2, exShowroomPrice: 95000 },
+    ],
+  },
+  {
+    value: 'yamaha',
+    label: 'Yamaha',
+    vehicleClass: 'two_wheeler',
+    models: [
+      { value: 'fascino', label: 'Fascino 125', fuelTypes: ['petrol'], cubicCapacity: 125, seatingCapacity: 2, exShowroomPrice: 90000 },
+      { value: 'ray_zr', label: 'RayZR 125', fuelTypes: ['petrol'], cubicCapacity: 125, seatingCapacity: 2, exShowroomPrice: 92000 },
+      { value: 'mt15', label: 'MT-15', fuelTypes: ['petrol'], cubicCapacity: 155, seatingCapacity: 2, exShowroomPrice: 175000 },
+      { value: 'r15', label: 'R15 V4', fuelTypes: ['petrol'], cubicCapacity: 155, seatingCapacity: 2, exShowroomPrice: 195000 },
+    ],
+  },
+  {
+    value: 'suzuki_motorcycle',
+    label: 'Suzuki Motorcycle',
+    vehicleClass: 'two_wheeler',
+    models: [
+      { value: 'access', label: 'Access 125', fuelTypes: ['petrol'], cubicCapacity: 125, seatingCapacity: 2, exShowroomPrice: 88000 },
+      { value: 'gixxer', label: 'Gixxer', fuelTypes: ['petrol'], cubicCapacity: 155, seatingCapacity: 2, exShowroomPrice: 145000 },
+    ],
+  },
+  {
+    value: 'ola_electric',
+    label: 'Ola Electric',
+    vehicleClass: 'two_wheeler',
+    models: [
+      { value: 's1_pro', label: 'S1 Pro', fuelTypes: ['electric'], cubicCapacity: 0, seatingCapacity: 2, exShowroomPrice: 145000 },
+      { value: 's1_air', label: 'S1 Air', fuelTypes: ['electric'], cubicCapacity: 0, seatingCapacity: 2, exShowroomPrice: 110000 },
     ],
   },
   {
@@ -223,9 +345,12 @@ export const VEHICLE_MAKES = [
     label: 'Ashok Leyland',
     vehicleClass: 'commercial_gcv',
     models: [
-      { value: 'dost', label: 'Dost' },
-      { value: 'bada_dost', label: 'Bada Dost' },
-      { value: 'partner', label: 'Partner' },
+      { value: 'dost', label: 'Dost', fuelTypes: ['diesel', 'cng'], cubicCapacity: 1478, seatingCapacity: 2, exShowroomPrice: 750000, weightBand: 'le_2_5t' },
+      { value: 'bada_dost', label: 'Bada Dost', fuelTypes: ['diesel', 'cng'], cubicCapacity: 2500, seatingCapacity: 2, exShowroomPrice: 950000, weightBand: '2_5_3_5t' },
+      { value: 'partner', label: 'Partner', fuelTypes: ['diesel'], cubicCapacity: 2500, seatingCapacity: 2, exShowroomPrice: 1050000, weightBand: '3_5_7_5t' },
+      { value: 'ecomet_1215', label: 'Ecomet 1215', fuelTypes: ['diesel'], cubicCapacity: 3300, seatingCapacity: 2, exShowroomPrice: 1850000, weightBand: '7_5_12t' },
+      { value: 'boss_1618', label: 'Boss 1618', fuelTypes: ['diesel'], cubicCapacity: 5660, seatingCapacity: 2, exShowroomPrice: 2650000, weightBand: '12_20t' },
+      { value: 'captain_3123', label: 'Captain 3123', fuelTypes: ['diesel'], cubicCapacity: 7200, seatingCapacity: 3, exShowroomPrice: 3900000, weightBand: '20_40t' },
     ],
   },
   {
@@ -233,18 +358,204 @@ export const VEHICLE_MAKES = [
     label: 'Tata Motors Commercial',
     vehicleClass: 'commercial_gcv',
     models: [
-      { value: 'ace', label: 'Ace' },
-      { value: '407', label: '407 Gold' },
-      { value: 'signa', label: 'Signa' },
+      { value: 'ace', label: 'Ace', fuelTypes: ['diesel', 'cng', 'electric'], cubicCapacity: 700, seatingCapacity: 2, exShowroomPrice: 550000, weightBand: 'le_2_5t' },
+      { value: 'intra_v30', label: 'Intra V30', fuelTypes: ['diesel', 'cng'], cubicCapacity: 1478, seatingCapacity: 2, exShowroomPrice: 780000, weightBand: '2_5_3_5t' },
+      { value: '407', label: '407 Gold', fuelTypes: ['diesel'], cubicCapacity: 2956, seatingCapacity: 3, exShowroomPrice: 1450000, weightBand: '3_5_7_5t' },
+      { value: '709g', label: '709 G', fuelTypes: ['diesel'], cubicCapacity: 3785, seatingCapacity: 2, exShowroomPrice: 1950000, weightBand: '7_5_12t' },
+      { value: 'lpt_1618', label: 'LPT 1618', fuelTypes: ['diesel'], cubicCapacity: 5675, seatingCapacity: 2, exShowroomPrice: 2750000, weightBand: '12_20t' },
+      { value: 'signa', label: 'Signa 4223', fuelTypes: ['diesel'], cubicCapacity: 5883, seatingCapacity: 3, exShowroomPrice: 2800000, weightBand: '20_40t' },
+      { value: 'signa_4830', label: 'Signa 4830 (Multi-Axle)', fuelTypes: ['diesel'], cubicCapacity: 6702, seatingCapacity: 3, exShowroomPrice: 4200000, weightBand: 'gt_40t' },
     ],
   },
+  {
+    value: 'eicher',
+    label: 'Eicher',
+    vehicleClass: 'commercial_gcv',
+    models: [
+      { value: 'pro_2049', label: 'Pro 2049', fuelTypes: ['diesel'], cubicCapacity: 2596, seatingCapacity: 2, exShowroomPrice: 1350000, weightBand: '3_5_7_5t' },
+      { value: 'pro_2110', label: 'Pro 2110', fuelTypes: ['diesel'], cubicCapacity: 3298, seatingCapacity: 2, exShowroomPrice: 1750000, weightBand: '7_5_12t' },
+      { value: 'pro_3015', label: 'Pro 3015', fuelTypes: ['diesel'], cubicCapacity: 5883, seatingCapacity: 2, exShowroomPrice: 2600000, weightBand: '12_20t' },
+      { value: 'pro_6037', label: 'Pro 6037 (Multi-Axle)', fuelTypes: ['diesel'], cubicCapacity: 8224, seatingCapacity: 3, exShowroomPrice: 4500000, weightBand: 'gt_40t' },
+    ],
+  },
+  {
+    value: 'bharatbenz',
+    label: 'BharatBenz',
+    vehicleClass: 'commercial_gcv',
+    models: [
+      { value: '911r', label: '911R', fuelTypes: ['diesel'], cubicCapacity: 2998, seatingCapacity: 2, exShowroomPrice: 1600000, weightBand: '7_5_12t' },
+      { value: '1217c', label: '1217C', fuelTypes: ['diesel'], cubicCapacity: 4570, seatingCapacity: 2, exShowroomPrice: 2450000, weightBand: '12_20t' },
+      { value: '2823c', label: '2823C', fuelTypes: ['diesel'], cubicCapacity: 6871, seatingCapacity: 2, exShowroomPrice: 3600000, weightBand: '20_40t' },
+      { value: '3123c', label: '3123C (Multi-Axle)', fuelTypes: ['diesel'], cubicCapacity: 7201, seatingCapacity: 3, exShowroomPrice: 4400000, weightBand: 'gt_40t' },
+    ],
+  },
+  {
+    value: 'piaggio',
+    label: 'Piaggio',
+    vehicleClass: 'commercial_gcv',
+    models: [
+      { value: 'ape_xtra_ldx', label: 'Ape Xtra LDX (3W Goods)', fuelTypes: ['diesel', 'cng'], cubicCapacity: 499, seatingCapacity: 1, exShowroomPrice: 320000, weightBand: 'gcv_3w' },
+    ],
+  },
+  {
+    value: 'mahindra_gcv',
+    label: 'Mahindra',
+    vehicleClass: 'commercial_gcv',
+    models: [
+      { value: 'jeeto', label: 'Jeeto', fuelTypes: ['diesel', 'cng'], cubicCapacity: 800, seatingCapacity: 2, exShowroomPrice: 500000, weightBand: 'le_2_5t' },
+      { value: 'bolero_pikup_gcv', label: 'Bolero Pik-Up', fuelTypes: ['diesel'], cubicCapacity: 1493, seatingCapacity: 2, exShowroomPrice: 900000, weightBand: '2_5_3_5t' },
+      { value: 'furio_7', label: 'Furio 7', fuelTypes: ['diesel'], cubicCapacity: 2956, seatingCapacity: 2, exShowroomPrice: 1550000, weightBand: '3_5_7_5t' },
+      { value: 'blazo_x_28', label: 'Blazo X 28', fuelTypes: ['diesel'], cubicCapacity: 6690, seatingCapacity: 2, exShowroomPrice: 3200000, weightBand: '20_40t' },
+    ],
+  },
+  {
+    value: 'force_motors_gcv',
+    label: 'Force Motors',
+    vehicleClass: 'commercial_gcv',
+    models: [
+      { value: 'trump_40', label: 'Trump 40', fuelTypes: ['diesel'], cubicCapacity: 2596, seatingCapacity: 2, exShowroomPrice: 1350000, weightBand: '3_5_7_5t' },
+    ],
+  },
+
   {
     value: 'mahindra_commercial',
     label: 'Mahindra',
     vehicleClass: 'commercial_pcv',
     models: [
-      { value: 'bolero_pickup', label: 'Bolero Pickup' },
-      { value: 'supro', label: 'Supro' },
+      { value: 'bolero_pickup', label: 'Bolero Pickup', fuelTypes: ['diesel'], cubicCapacity: 1493, seatingCapacity: 3, exShowroomPrice: 900000, pcvType: 'pcv_taxi' },
+      { value: 'supro', label: 'Supro', fuelTypes: ['diesel', 'cng'], cubicCapacity: 1493, seatingCapacity: 3, exShowroomPrice: 700000, pcvType: 'pcv_taxi' },
+    ],
+  },
+  {
+    value: 'force_motors',
+    label: 'Force Motors',
+    vehicleClass: 'commercial_pcv',
+    models: [
+      { value: 'traveller_school', label: 'Traveller (School Bus)', fuelTypes: ['diesel'], cubicCapacity: 2596, seatingCapacity: 26, exShowroomPrice: 2100000, pcvType: 'pcv_bus_school' },
+      { value: 'traveller_staff', label: 'Traveller (Staff/Other Bus)', fuelTypes: ['diesel'], cubicCapacity: 2596, seatingCapacity: 26, exShowroomPrice: 2050000, pcvType: 'pcv_bus_other' },
+    ],
+  },
+  {
+    value: 'ashok_leyland_bus',
+    label: 'Ashok Leyland (Bus)',
+    vehicleClass: 'commercial_pcv',
+    models: [
+      { value: 'lynx_school', label: 'Lynx (School Bus)', fuelTypes: ['diesel'], cubicCapacity: 3300, seatingCapacity: 40, exShowroomPrice: 3200000, pcvType: 'pcv_bus_school' },
+      { value: 'viking_staff', label: 'Viking (Staff/Other Bus)', fuelTypes: ['diesel'], cubicCapacity: 3300, seatingCapacity: 40, exShowroomPrice: 3350000, pcvType: 'pcv_bus_other' },
+    ],
+  },
+  {
+    value: 'bajaj_auto_3w',
+    label: 'Bajaj Auto (3W)',
+    vehicleClass: 'commercial_pcv',
+    models: [
+      { value: 're_compact', label: 'RE Compact (Auto-Rickshaw)', fuelTypes: ['cng', 'petrol'], cubicCapacity: 236, seatingCapacity: 4, exShowroomPrice: 250000, pcvType: 'pcv_3w' },
+      { value: 'maxima_cargo', label: 'Maxima Z (Taxi)', fuelTypes: ['cng', 'petrol'], cubicCapacity: 236, seatingCapacity: 4, exShowroomPrice: 280000, pcvType: 'pcv_taxi' },
+    ],
+  },
+  {
+    value: 'maruti_taxi',
+    label: 'Maruti Suzuki',
+    vehicleClass: 'commercial_pcv',
+    models: [
+      { value: 'dzire_taxi', label: 'Dzire Tour', fuelTypes: ['petrol', 'cng'], cubicCapacity: 1197, seatingCapacity: 5, exShowroomPrice: 720000, pcvType: 'pcv_taxi' },
+      { value: 'ertiga_taxi', label: 'Ertiga Tour', fuelTypes: ['petrol', 'cng'], cubicCapacity: 1462, seatingCapacity: 7, exShowroomPrice: 950000, pcvType: 'pcv_taxi' },
+    ],
+  },
+  {
+    value: 'tata_winger',
+    label: 'Tata Motors',
+    vehicleClass: 'commercial_pcv',
+    models: [
+      { value: 'winger_school', label: 'Winger (School Bus)', fuelTypes: ['diesel'], cubicCapacity: 2179, seatingCapacity: 26, exShowroomPrice: 1900000, pcvType: 'pcv_bus_school' },
+      { value: 'starbus_staff', label: 'Starbus (Staff/Other Bus)', fuelTypes: ['diesel'], cubicCapacity: 3300, seatingCapacity: 40, exShowroomPrice: 3050000, pcvType: 'pcv_bus_other' },
+    ],
+  },
+
+  {
+    value: 'mahindra_tractors',
+    label: 'Mahindra Tractors',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'jivo_245', label: 'Jivo 245 DI', fuelTypes: ['diesel'], cubicCapacity: 1200, seatingCapacity: 1, exShowroomPrice: 550000, miscType: 'tractor_new' },
+      { value: 'yuvo_575', label: 'Yuvo Tech+ 575', fuelTypes: ['diesel'], cubicCapacity: 2500, seatingCapacity: 1, exShowroomPrice: 850000, miscType: 'tractor_new' },
+    ],
+  },
+  {
+    value: 'swaraj_tractors',
+    label: 'Swaraj Tractors',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'swaraj_735', label: 'Swaraj 735 FE', fuelTypes: ['diesel'], cubicCapacity: 2000, seatingCapacity: 1, exShowroomPrice: 700000, miscType: 'tractor_new' },
+      { value: 'swaraj_855', label: 'Swaraj 855 FE', fuelTypes: ['diesel'], cubicCapacity: 3000, seatingCapacity: 1, exShowroomPrice: 950000, miscType: 'tractor_new' },
+    ],
+  },
+  {
+    value: 'john_deere',
+    label: 'John Deere',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'jd_5050d', label: '5050 D', fuelTypes: ['diesel'], cubicCapacity: 2900, seatingCapacity: 1, exShowroomPrice: 900000, miscType: 'tractor_new' },
+      { value: 'jd_s670', label: 'S670 Combine Harvester', fuelTypes: ['diesel'], cubicCapacity: 9000, seatingCapacity: 1, exShowroomPrice: 4500000, miscType: 'harvester_new' },
+    ],
+  },
+  {
+    value: 'jcb',
+    label: 'JCB',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'jcb_3dx', label: '3DX Backhoe Loader', fuelTypes: ['diesel'], cubicCapacity: 4400, seatingCapacity: 1, exShowroomPrice: 2650000, miscType: 'construction_equipment' },
+      { value: 'jcb_js205', label: 'JS205 Excavator', fuelTypes: ['diesel'], cubicCapacity: 4800, seatingCapacity: 1, exShowroomPrice: 3800000, miscType: 'construction_equipment' },
+    ],
+  },
+  {
+    value: 'caterpillar',
+    label: 'Caterpillar',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'cat_424', label: '424 Backhoe Loader', fuelTypes: ['diesel'], cubicCapacity: 4400, seatingCapacity: 1, exShowroomPrice: 2900000, miscType: 'construction_equipment' },
+    ],
+  },
+  {
+    value: 'escorts_kubota',
+    label: 'Escorts Kubota',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'harvmaster_h4400', label: 'HarvMaster H-4400', fuelTypes: ['diesel'], cubicCapacity: 4400, seatingCapacity: 1, exShowroomPrice: 2200000, miscType: 'harvester_new' },
+    ],
+  },
+  {
+    value: 'mini_metro_erickshaw',
+    label: 'Mini Metro (E-Rickshaw)',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'e_rickshaw_std', label: 'E-Rickshaw Standard', fuelTypes: ['electric'], cubicCapacity: 0, seatingCapacity: 4, exShowroomPrice: 180000, miscType: 'e_rickshaw_loader' },
+      { value: 'e_loader_std', label: 'E-Loader Standard', fuelTypes: ['electric'], cubicCapacity: 0, seatingCapacity: 1, exShowroomPrice: 220000, miscType: 'e_rickshaw_loader' },
+    ],
+  },
+  {
+    value: 'new_holland',
+    label: 'New Holland',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'nh_3630', label: '3630 TX Super', fuelTypes: ['diesel'], cubicCapacity: 2900, seatingCapacity: 1, exShowroomPrice: 780000, miscType: 'tractor_new' },
+    ],
+  },
+  {
+    value: 'sonalika',
+    label: 'Sonalika Tractors',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'di_745_iii', label: 'DI 745 III', fuelTypes: ['diesel'], cubicCapacity: 2700, seatingCapacity: 1, exShowroomPrice: 620000, miscType: 'tractor_new' },
+      { value: 'di_35_rx', label: 'DI 35 RX (Old Series)', fuelTypes: ['diesel'], cubicCapacity: 2500, seatingCapacity: 1, exShowroomPrice: 480000, miscType: 'tractor_old' },
+    ],
+  },
+  {
+    value: 'kubota_construction',
+    label: 'Kubota',
+    vehicleClass: 'misc_d',
+    models: [
+      { value: 'kx_080', label: 'KX080-4 Excavator', fuelTypes: ['diesel'], cubicCapacity: 4400, seatingCapacity: 1, exShowroomPrice: 3300000, miscType: 'construction_equipment' },
     ],
   },
 ];
@@ -257,6 +568,31 @@ export function getMakesForClass(vehicleClass) {
 export function getModelsForMake(makeValue) {
   const make = VEHICLE_MAKES.find((m) => m.value === makeValue);
   return make ? make.models : [];
+}
+
+// Returns the fuel type values a specific model is actually sold with. Falls
+// back to all fuel types if the model isn't found or has no list defined,
+// so the form never ends up with an empty dropdown.
+export function getFuelTypesForModel(makeValue, modelValue) {
+  const models = getModelsForMake(makeValue);
+  const model = models.find((m) => m.value === modelValue);
+  if (model?.fuelTypes?.length) return model.fuelTypes;
+  return FUEL_TYPES.map((f) => f.value);
+}
+
+// Returns the full model record (cc, seating capacity, ex-showroom price)
+// used to auto-fill specs and calculate IDV once a model is selected.
+export function getModelSpec(makeValue, modelValue) {
+  const models = getModelsForMake(makeValue);
+  return models.find((m) => m.value === modelValue) ?? null;
+}
+
+// GCV models carry their real GVW band (see GCV_WEIGHT_BANDS above) so the
+// entry form and rule engine can key commission off weight, the way real
+// broker payout grids do.
+export function getWeightBandForModel(makeValue, modelValue) {
+  const spec = getModelSpec(makeValue, modelValue);
+  return spec?.weightBand ?? null;
 }
 
 // "Case Type" — the business/underwriting case for the policy being quoted.
@@ -285,7 +621,8 @@ export const POLICY_TYPES = [
 ];
 
 // Two-wheelers are overwhelmingly petrol in the Indian market — used to
-// auto-default the Fuel Type field when Vehicle Class = Two-Wheeler.
+// auto-default the Fuel Type field when Vehicle Class = Two-Wheeler, before
+// a specific make/model narrows it further.
 export const DEFAULT_FUEL_BY_CLASS = {
   two_wheeler: 'petrol',
 };
@@ -351,6 +688,13 @@ export const PARAMETERS = [
     key: 'seatingCapacity',
     label: 'Seating Capacity',
     type: FIELD_TYPES.NUMBER,
+    core: true,
+  },
+  {
+    key: 'weightBand',
+    label: 'GCV Weight Band (GVW)',
+    type: FIELD_TYPES.SELECT,
+    options: GCV_WEIGHT_BANDS,
     core: true,
   },
   {

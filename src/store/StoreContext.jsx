@@ -12,6 +12,10 @@ export function StoreProvider({ children }) {
       updateInsurer: (insurer) => dispatch({ type: ActionTypes.UPDATE_INSURER, payload: insurer }),
       deleteInsurer: (id) => dispatch({ type: ActionTypes.DELETE_INSURER, payload: { id } }),
 
+      addAgent: (agent) => dispatch({ type: ActionTypes.ADD_AGENT, payload: { id: nextId('AGT'), ...agent } }),
+      updateAgent: (agent) => dispatch({ type: ActionTypes.UPDATE_AGENT, payload: agent }),
+      deleteAgent: (id) => dispatch({ type: ActionTypes.DELETE_AGENT, payload: { id } }),
+
       addRule: (rule) => dispatch({ type: ActionTypes.ADD_RULE, payload: { id: nextId('rule'), ...rule } }),
       updateRule: (rule) => dispatch({ type: ActionTypes.UPDATE_RULE, payload: rule }),
       deleteRule: (id) => dispatch({ type: ActionTypes.DELETE_RULE, payload: { id } }),
@@ -26,6 +30,8 @@ export function StoreProvider({ children }) {
       updatePolicy: (policy) => dispatch({ type: ActionTypes.UPDATE_POLICY, payload: policy }),
       deletePolicy: (id) => dispatch({ type: ActionTypes.DELETE_POLICY, payload: { id } }),
       togglePolicyActive: (id) => dispatch({ type: ActionTypes.TOGGLE_POLICY_ACTIVE, payload: { id } }),
+
+      setCommissionCheckerSession: (session) => dispatch({ type: ActionTypes.SET_COMMISSION_CHECKER_SESSION, payload: session }),
 
       resetDemoData: () => dispatch({ type: ActionTypes.RESET_DEMO_DATA }),
     }),

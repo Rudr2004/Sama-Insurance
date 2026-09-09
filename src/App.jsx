@@ -1,9 +1,11 @@
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { StoreProvider, useStore } from './store/StoreContext.jsx';
+import { ToastProvider } from './components/common/ToastContext.jsx';
 import { RoleSwitcher } from './components/common/RoleSwitcher.jsx';
 import { Button } from './components/common/Button.jsx';
 import { AdminLayout } from './pages/admin/AdminLayout.jsx';
 import { InsurerManagement } from './pages/admin/InsurerManagement.jsx';
+import { AgentManagement } from './pages/admin/AgentManagement.jsx';
 import { PolicyCatalog } from './pages/admin/PolicyCatalog.jsx';
 import { QuickCommissionRule } from './pages/admin/QuickCommissionRule.jsx';
 import { RuleList } from './pages/admin/RuleList.jsx';
@@ -54,6 +56,7 @@ function AppShell() {
           <Route path="/" element={<Navigate to="/agent" replace />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<InsurerManagement />} />
+            <Route path="agents" element={<AgentManagement />} />
             <Route path="policies" element={<PolicyCatalog />} />
             <Route path="quick-rule" element={<QuickCommissionRule />} />
             <Route path="rules" element={<RuleList />} />
@@ -77,7 +80,9 @@ function AppShell() {
 export default function App() {
   return (
     <StoreProvider>
-      <AppShell />
+      <ToastProvider>
+        <AppShell />
+      </ToastProvider>
     </StoreProvider>
   );
 }

@@ -69,7 +69,7 @@ export function RuleSimulator() {
         <Card>
           <CardHeader title="Simulated Results" subtitle="This is exactly what an agent would see for this input." />
           <CardBody>
-            <CommissionResultsList results={results} />
+            <CommissionResultsList results={results} insurers={state.insurers} submittedInput={submittedInput} />
           </CardBody>
         </Card>
       )}

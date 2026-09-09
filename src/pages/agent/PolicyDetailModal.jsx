@@ -24,8 +24,11 @@ export function PolicyDetailModal({ policy, insurerName, onClose }) {
   const idv = policy.idvBreakup;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl">
+    <div
+      className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8 animate-modal-backdrop"
+      onClick={onClose}
+    >
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl animate-modal-panel" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -38,7 +41,11 @@ export function PolicyDetailModal({ policy, insurerName, onClose }) {
               {policy.vehicleVariant ? ` (${policy.vehicleVariant})` : ''}
             </h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none px-1">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
