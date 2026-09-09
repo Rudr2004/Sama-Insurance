@@ -10,10 +10,18 @@ export function InfoPanel() {
     <div className="rounded-xl border border-brand-200 bg-brand-50/60">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+        aria-expanded={open}
       >
-        {/* <span className="text-sm font-semibold text-brand-800">How this POC works — rule precedence order</span> */}
-        <span className="text-brand-600 text-sm">{open ? '▲ Hide' : '▼ Show'}</span>
+        <span className="text-sm font-semibold text-brand-800">How this Rule Engine works — rule precedence order</span>
+        <svg
+          className={`shrink-0 w-4 h-4 text-brand-600 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
       {open && (
         <div className="px-4 pb-4 text-sm text-slate-700 space-y-3">
