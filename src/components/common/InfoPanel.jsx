@@ -12,7 +12,7 @@ export function InfoPanel() {
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-4 py-3 text-left"
       >
-        <span className="text-sm font-semibold text-brand-800">How this POC works — rule precedence order</span>
+        {/* <span className="text-sm font-semibold text-brand-800">How this POC works — rule precedence order</span> */}
         <span className="text-brand-600 text-sm">{open ? '▲ Hide' : '▼ Show'}</span>
       </button>
       {open && (
@@ -43,7 +43,7 @@ export function InfoPanel() {
             Within the same tier, rules are ordered by priority (lower number evaluated first); the first full match
             wins. Ties fall back to the more specific rule (the one with more conditions).
           </p>
-          <p className="text-xs text-slate-500 italic">Demo data resets on reload — this POC uses in-memory state only.</p>
+          {/* <p className="text-xs text-slate-500 italic">Demo data resets on reload — this POC uses in-memory state only.</p> */}
         </div>
       )}
     </div>

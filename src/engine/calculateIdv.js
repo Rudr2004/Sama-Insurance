@@ -2,8 +2,7 @@
 //
 // IDV is not stored anywhere in vehicle registration data (Vahan/Parivahan
 // included); insurers compute it per policy as:
-//   IDV = manufacturer's listed ex-showroom price − age-based depreciation
-//   (+ depreciated value of any post-fitted accessories, e.g. a CNG kit)
+//   IDV = manufacturer's listed ex-showroom price × (1 − age-based depreciation)
 // using a depreciation schedule. Real aggregators (Acko, Digit, PolicyBazaar)
 // apply this per vehicle category, since the fixed IRDAI motor-tariff slab
 // below is specifically defined for Private Cars & Two-Wheelers — Commercial
@@ -48,18 +47,6 @@ const BEYOND_SCHEDULE_RATE = {
   commercial: 0.45,
 };
 
-// CNG/LPG retrofit kit cost — depreciates alongside the vehicle at the same
-// rate, then adds back onto the base vehicle IDV, matching how Acko/Digit
-// itemize a post-fitted CNG kit as a separate IDV component. Cost scales
-// with vehicle segment since a 2W kit is far cheaper than a car's.
-const CNG_KIT_COST_BY_CLASS = {
-  two_wheeler: 12000,
-  private_car: 40000,
-  commercial_gcv: 55000,
-  commercial_pcv: 55000,
-  misc_d: 0, // tractors/CE are not CNG-retrofitted in practice
-};
-
 const COMMERCIAL_VEHICLE_CLASSES = ['commercial_gcv', 'commercial_pcv', 'misc_d'];
 
 function getDepreciationSchedule(vehicleClass) {
@@ -89,22 +76,13 @@ export function getDepreciationRate(vehicleAgeYears, vehicleClass) {
  * @param {number} vehicleAgeYears
  * @param {object} [options]
  * @param {string} [options.vehicleClass] - selects the depreciation curve; defaults to the PC/TW schedule
- * @param {boolean} [options.hasCngLpgKit] - adds a depreciated CNG/LPG kit value on top of the base IDV
  * @returns {number|null} IDV rounded to the nearest rupee, or null if inputs are invalid
  */
 export function calculateIdv(exShowroomPrice, vehicleAgeYears, options = {}) {
-  const { vehicleClass, hasCngLpgKit = false } = options;
+  const { vehicleClass } = options;
   const price = Number(exShowroomPrice);
   const rate = getDepreciationRate(vehicleAgeYears, vehicleClass);
   if (!Number.isFinite(price) || price <= 0 || rate === null) return null;
 
-  const baseIdv = price * (1 - rate);
-
-  let kitIdv = 0;
-  if (hasCngLpgKit) {
-    const kitCost = CNG_KIT_COST_BY_CLASS[vehicleClass] ?? CNG_KIT_COST_BY_CLASS.private_car;
-    kitIdv = kitCost * (1 - rate);
-  }
-
-  return Math.round(baseIdv + kitIdv);
+  return Math.round(price * (1 - rate));
 }

@@ -1,5 +1,6 @@
 import { useStore } from '../../store/StoreContext.jsx';
 import { evaluateCommission } from '../../engine/evaluateCommission.js';
+import { calculatePremium } from '../../engine/calculatePremium.js';
 import { VehiclePolicyForm } from '../../components/common/VehiclePolicyForm.jsx';
 import { CommissionResultsList } from '../../components/common/CommissionResultsList.jsx';
 import { PolicyInputSummary } from '../../components/common/PolicyInputSummary.jsx';
@@ -21,6 +22,8 @@ const initialInput = {
   fuelType: '',
   cubicCapacity: '',
   seatingCapacity: '',
+  idv: '',
+  premiumAmount: '',
   policyType: '',
   caseType: '',
   agentId: '',
@@ -64,8 +67,10 @@ export function AgentPortal() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const normalized = { ...input, vehicleAge: Number(input.vehicleAge) || 0 };
-    const nextResults = evaluateCommission(normalized, state.insurers, state.rules, state.agentOverrides);
-    setCommissionCheckerSession({ input, results: nextResults, submittedInput: input });
+    const premium = calculatePremium(normalized);
+    const withPremium = { ...normalized, premiumAmount: premium?.grossPremium ?? '' };
+    const nextResults = evaluateCommission(withPremium, state.insurers, state.rules, state.agentOverrides);
+    setCommissionCheckerSession({ input, results: nextResults, submittedInput: withPremium });
   };
 
   const handleReset = () => {

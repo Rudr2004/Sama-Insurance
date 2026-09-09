@@ -733,6 +733,12 @@ export const PARAMETERS = [
     core: false,
   },
   {
+    key: 'premiumAmount',
+    label: 'Premium Amount (₹)',
+    type: FIELD_TYPES.NUMBER,
+    core: false,
+  },
+  {
     key: 'ncb',
     label: 'NCB Slab (%)',
     type: FIELD_TYPES.SELECT,

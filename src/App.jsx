@@ -26,7 +26,7 @@ function Header() {
           </div>
           <div>
             <p className="font-semibold text-slate-900 leading-tight">Commission Rules Engine</p>
-            <p className="text-xs text-slate-400 leading-tight">Motor insurance POC</p>
+            {/* <p className="text-xs text-slate-400 leading-tight">Motor insurance POC</p> */}
           </div>
         </Link>
         <div className="flex items-center gap-3">

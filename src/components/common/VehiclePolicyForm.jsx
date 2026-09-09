@@ -17,6 +17,7 @@ import {
 } from '../../config/parameters.js';
 import { lookupVehicleByRegNumber } from '../../data/rcLookupMock.js';
 import { calculateIdv } from '../../engine/calculateIdv.js';
+import { calculatePremium } from '../../engine/calculatePremium.js';
 import { FormField, Select, TextInput } from './FormField.jsx';
 import { Button } from './Button.jsx';
 import { useToast } from './ToastContext.jsx';
@@ -49,6 +50,7 @@ const CORE_KEYS = [
   'weightBand',
   'vehicleAge',
   'idv',
+  'premiumAmount',
   'policyType',
   'caseType',
   'agentId',
@@ -82,15 +84,34 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
   // "Is CNG/LPG Fitted" only makes sense for models that support a CNG
   // variant/retrofit AND when the selected fuel type isn't already CNG
   // itself (in which case the question is redundant — it's already CNG).
+  // This is a policy addon selection only — it does not affect IDV, which
+  // is purely ex-showroom price x (1 - age-based depreciation).
   const isCngLpgApplicable = Boolean(availableFuelTypes.includes('cng') && value.fuelType !== 'cng');
-  const hasCngLpgKit = isCngLpgApplicable && value.isCngLpg === 'yes';
 
   const estimatedIdv = useMemo(
     () =>
       modelSpec?.exShowroomPrice
-        ? calculateIdv(modelSpec.exShowroomPrice, value.vehicleAge, { vehicleClass: value.vehicleClass, hasCngLpgKit })
+        ? calculateIdv(modelSpec.exShowroomPrice, value.vehicleAge, { vehicleClass: value.vehicleClass })
         : null,
-    [modelSpec, value.vehicleAge, value.vehicleClass, hasCngLpgKit]
+    [modelSpec, value.vehicleAge, value.vehicleClass]
+  );
+
+  // Premium is always derived, never manually typed — OD (IDV x rate, minus
+  // NCB) + TP (fixed IRDAI-tariff-structured slab by vehicle class/cc/GVW)
+  // + addon premiums, then 18% GST, same structure as a real policy schedule.
+  const premiumIdv = value.idv || estimatedIdv;
+  const calculatedPremium = useMemo(
+    () =>
+      calculatePremium({
+        vehicleClass: value.vehicleClass,
+        idv: premiumIdv,
+        cubicCapacity: value.cubicCapacity,
+        weightBand: value.weightBand,
+        ncb: value.ncb,
+        zeroDepCover: value.zeroDepCover,
+        paOwnerCover: value.paOwnerCover,
+      }),
+    [value.vehicleClass, premiumIdv, value.cubicCapacity, value.weightBand, value.ncb, value.zeroDepCover, value.paOwnerCover]
   );
 
   // GCV Weight Band (GVW) only applies to Goods Carrying vehicles — real
@@ -125,10 +146,7 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
     const cngApplicable = fuelOptions.includes('cng') && nextFuelType !== 'cng';
     const nextIsCngLpg = cngApplicable ? value.isCngLpg : 'no';
     const idv = spec?.exShowroomPrice
-      ? calculateIdv(spec.exShowroomPrice, value.vehicleAge, {
-          vehicleClass: value.vehicleClass,
-          hasCngLpgKit: cngApplicable && nextIsCngLpg === 'yes',
-        })
+      ? calculateIdv(spec.exShowroomPrice, value.vehicleAge, { vehicleClass: value.vehicleClass })
       : '';
     set({
       vehicleModel,
@@ -145,28 +163,19 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
     const cngApplicable = availableFuelTypes.includes('cng') && fuelType !== 'cng';
     const nextIsCngLpg = cngApplicable ? value.isCngLpg : 'no';
     const idv = modelSpec?.exShowroomPrice
-      ? calculateIdv(modelSpec.exShowroomPrice, value.vehicleAge, {
-          vehicleClass: value.vehicleClass,
-          hasCngLpgKit: cngApplicable && nextIsCngLpg === 'yes',
-        })
+      ? calculateIdv(modelSpec.exShowroomPrice, value.vehicleAge, { vehicleClass: value.vehicleClass })
       : '';
     set({ fuelType, isCngLpg: nextIsCngLpg, ...(idv ? { idv } : {}) });
   };
 
   const handleCngLpgChange = (isCngLpg) => {
-    const idv = modelSpec?.exShowroomPrice
-      ? calculateIdv(modelSpec.exShowroomPrice, value.vehicleAge, {
-          vehicleClass: value.vehicleClass,
-          hasCngLpgKit: isCngLpg === 'yes',
-        })
-      : '';
-    set({ isCngLpg, ...(idv ? { idv } : {}) });
+    set({ isCngLpg });
   };
 
   const handleRegistrationDate = (registrationDate) => {
     const vehicleAge = calcAgeFromDate(registrationDate);
     const idv = modelSpec?.exShowroomPrice
-      ? calculateIdv(modelSpec.exShowroomPrice, vehicleAge, { vehicleClass: value.vehicleClass, hasCngLpgKit })
+      ? calculateIdv(modelSpec.exShowroomPrice, vehicleAge, { vehicleClass: value.vehicleClass })
       : '';
     set({ registrationDate, vehicleAge, ...(idv ? { idv } : {}) });
   };
@@ -216,10 +225,7 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
     const cngApplicable = recordFuelOptions.includes('cng') && record.fuelType !== 'cng';
     const nextIsCngLpg = cngApplicable ? value.isCngLpg : 'no';
     const idv = spec?.exShowroomPrice
-      ? calculateIdv(spec.exShowroomPrice, vehicleAge, {
-          vehicleClass: record.vehicleClass,
-          hasCngLpgKit: cngApplicable && nextIsCngLpg === 'yes',
-        })
+      ? calculateIdv(spec.exShowroomPrice, vehicleAge, { vehicleClass: record.vehicleClass })
       : '';
     set({
       regNumber: record.regNumber,
@@ -386,10 +392,15 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
             label="IDV (₹, Insured Declared Value)"
             hint={
               estimatedIdv && Number(value.idv) !== estimatedIdv
-                ? `Estimated from ${getOptionLabel('vehicleMake', value.vehicleMake) || 'model'} ex-showroom price, age${
-                    hasCngLpgKit ? ' & CNG kit' : ''
-                  }: ₹${estimatedIdv.toLocaleString('en-IN')} — edit if needed`
-                : `Auto-estimated from company/model price & age${hasCngLpgKit ? ' (incl. CNG kit)' : ''}; editable`
+                ? `Estimated from ${getOptionLabel('vehicleMake', value.vehicleMake) || 'model'} ex-showroom price & age: ₹${estimatedIdv.toLocaleString('en-IN')} — edit if needed`
+                : `Auto-estimated from company/model price & age; editable`
+            }
+            infoTooltip={
+              'IDV = Ex-Showroom Price × (1 − Depreciation Rate)\n\n' +
+              'Depreciation by vehicle age (Private Car / Two-Wheeler):\n' +
+              '≤6mo 5% · 6mo-1yr 15% · 1-2yr 20% · 2-3yr 30% · 3-4yr 40% · 4-5yr 50%\n\n' +
+              'Commercial (GCV/PCV) & MISC-D use a flatter schedule:\n' +
+              '≤1yr 10% · 1-2yr 15% · 2-3yr 20% · 3-4yr 28% · 4-5yr 35% · 5-7yr 42% · beyond 45%'
             }
           >
             <TextInput
@@ -397,6 +408,32 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
               value={value.idv || ''}
               onChange={(e) => set({ idv: e.target.value })}
               placeholder="e.g. 507500"
+            />
+          </FormField>
+          <FormField
+            label="Premium Amount (₹)"
+            hint={
+              calculatedPremium
+                ? `OD ₹${calculatedPremium.odPremium.toLocaleString('en-IN')} + TP ₹${calculatedPremium.tpPremium.toLocaleString('en-IN')}${
+                    calculatedPremium.addonPremium ? ` + Addons ₹${calculatedPremium.addonPremium.toLocaleString('en-IN')}` : ''
+                  } + GST ₹${calculatedPremium.gstAmount.toLocaleString('en-IN')} — auto-calculated, not editable`
+                : 'Auto-calculated from IDV, vehicle class/cc & NCB — fill those in first'
+            }
+            infoTooltip={
+              'OD Premium = IDV × 3.5% × (1 − NCB Discount%)\n' +
+              'TP Premium = fixed IRDAI-tariff slab by vehicle class + cc/GVW\n' +
+              'Net Premium = OD + TP + Addon Premiums\n' +
+              '(Zero Dep Cover ₹3,500, PA Owner Cover ₹500, if opted)\n' +
+              'GST = Net Premium × 18%\n\n' +
+              'Premium Amount = Net Premium + GST'
+            }
+          >
+            <TextInput
+              type="text"
+              readOnly
+              disabled
+              value={calculatedPremium ? `₹${calculatedPremium.grossPremium.toLocaleString('en-IN')}` : ''}
+              placeholder="Auto-calculated"
             />
           </FormField>
         </div>
@@ -524,8 +561,6 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
                 {(agents || []).map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
-                    {a.designation ? ` — ${a.designation}` : ''}
-                    {a.branch ? ` (${a.branch})` : ''}
                   </option>
                 ))}
               </Select>

@@ -76,23 +76,12 @@ describe('calculateIdv', () => {
     expect(getDepreciationRate(10, 'private_car')).toBe(0.5);
   });
 
-  it('adds a depreciated CNG kit value on top of the base IDV when fitted', () => {
-    // New private car, 5% depreciation. Kit cost 40000 * 0.95 = 38000.
+  it('IDV is purely ex-showroom price x (1 - depreciation) — CNG/LPG has no effect', () => {
+    // A CNG/LPG addon is a separate policy addon, not an IDV component —
+    // passing hasCngLpgKit (even if a caller still does) must be a no-op.
     const withoutKit = calculateIdv(725000, 0.3, { vehicleClass: 'private_car' });
-    const withKit = calculateIdv(725000, 0.3, { vehicleClass: 'private_car', hasCngLpgKit: true });
+    const withKitFlag = calculateIdv(725000, 0.3, { vehicleClass: 'private_car', hasCngLpgKit: true });
     expect(withoutKit).toBe(688750);
-    expect(withKit).toBe(688750 + Math.round(40000 * 0.95));
-  });
-
-  it('scales the CNG kit cost by vehicle class', () => {
-    const twWithKit = calculateIdv(85000, 0.3, { vehicleClass: 'two_wheeler', hasCngLpgKit: true });
-    const twWithoutKit = calculateIdv(85000, 0.3, { vehicleClass: 'two_wheeler' });
-    expect(twWithKit - twWithoutKit).toBe(Math.round(12000 * 0.95));
-  });
-
-  it('does not add CNG kit value for MISC-D vehicles (not CNG-retrofitted in practice)', () => {
-    const withKit = calculateIdv(900000, 1, { vehicleClass: 'misc_d', hasCngLpgKit: true });
-    const withoutKit = calculateIdv(900000, 1, { vehicleClass: 'misc_d' });
-    expect(withKit).toBe(withoutKit);
+    expect(withKitFlag).toBe(withoutKit);
   });
 });

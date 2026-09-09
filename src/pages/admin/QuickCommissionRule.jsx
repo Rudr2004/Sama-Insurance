@@ -194,8 +194,6 @@ export function QuickCommissionRule() {
                 {state.agents.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
-                    {a.designation ? ` — ${a.designation}` : ''}
-                    {a.branch ? ` (${a.branch})` : ''}
                   </option>
                 ))}
               </Select>

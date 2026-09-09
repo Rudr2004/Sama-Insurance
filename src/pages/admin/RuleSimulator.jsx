@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
 import { evaluateCommission } from '../../engine/evaluateCommission.js';
+import { calculatePremium } from '../../engine/calculatePremium.js';
 import { VehiclePolicyForm } from '../../components/common/VehiclePolicyForm.jsx';
 import { CommissionResultsList } from '../../components/common/CommissionResultsList.jsx';
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
@@ -20,6 +21,8 @@ const initialInput = {
   fuelType: '',
   cubicCapacity: '',
   seatingCapacity: '',
+  idv: '',
+  premiumAmount: '',
   policyType: '',
   caseType: '',
   agentId: '',
@@ -39,8 +42,10 @@ export function RuleSimulator() {
   const handleRun = (e) => {
     e.preventDefault();
     const normalized = { ...input, vehicleAge: Number(input.vehicleAge) || 0 };
-    setResults(evaluateCommission(normalized, state.insurers, state.rules, state.agentOverrides));
-    setSubmittedInput(input);
+    const premium = calculatePremium(normalized);
+    const withPremium = { ...normalized, premiumAmount: premium?.grossPremium ?? '' };
+    setResults(evaluateCommission(withPremium, state.insurers, state.rules, state.agentOverrides));
+    setSubmittedInput(withPremium);
   };
 
   return (

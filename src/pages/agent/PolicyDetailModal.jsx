@@ -1,11 +1,6 @@
 import { Badge } from '../../components/common/Badge.jsx';
 import { Button } from '../../components/common/Button.jsx';
-import { getOptionLabel, getModelsForMake } from '../../config/parameters.js';
-
-function modelLabel(make, model) {
-  const found = getModelsForMake(make).find((m) => m.value === model);
-  return found ? found.label : model;
-}
+import { getOptionLabel } from '../../config/parameters.js';
 
 function Field({ label, value }) {
   return (
@@ -33,13 +28,9 @@ export function PolicyDetailModal({ policy, insurerName, onClose }) {
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <Badge tone="brand">{insurerName}</Badge>
-              <Badge tone="slate">{getOptionLabel('vehicleClass', policy.category)}</Badge>
               <Badge tone="violet">{getOptionLabel('policyType', policy.policyType)}</Badge>
             </div>
-            <h3 className="font-semibold text-lg text-slate-900">
-              {getOptionLabel('vehicleMake', policy.vehicleMake)} {modelLabel(policy.vehicleMake, policy.vehicleModel)}
-              {policy.vehicleVariant ? ` (${policy.vehicleVariant})` : ''}
-            </h3>
+            <h3 className="font-semibold text-lg text-slate-900">{getOptionLabel('vehicleClass', policy.category)}</h3>
           </div>
           <button
             onClick={onClose}
@@ -54,14 +45,11 @@ export function PolicyDetailModal({ policy, insurerName, onClose }) {
           <div>
             <h4 className="text-sm font-semibold text-slate-800 mb-2">Vehicle Details</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
-              <Field label="Company (Make)" value={getOptionLabel('vehicleMake', policy.vehicleMake)} />
-              <Field label="Model" value={modelLabel(policy.vehicleMake, policy.vehicleModel)} />
-              <Field label="Variant" value={policy.vehicleVariant} />
+              <Field label="Vehicle class" value={getOptionLabel('vehicleClass', policy.category)} />
               <Field label="RTO" value={policy.rto} />
               <Field label="Fuel type" value={getOptionLabel('fuelType', policy.fuelType)} />
               <Field label="Cubic capacity" value={policy.cubicCapacity ? `${policy.cubicCapacity} cc` : null} />
               <Field label="Seating capacity" value={policy.seatingCapacity} />
-              <Field label="Year of manufacture" value={policy.yearOfManufacture} />
             </div>
           </div>
 
@@ -104,7 +92,10 @@ export function PolicyDetailModal({ policy, insurerName, onClose }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
               <Field label="Period from" value={policy.periodFrom} />
               <Field label="Period to" value={policy.periodTo} />
-              <Field label="Claim settlement ratio" value={policy.claimSettlementRatio != null ? `${policy.claimSettlementRatio}%` : null} />
+              <Field
+                label="Claim settlement ratio"
+                value={policy.claimSettlementRatio != null ? `${policy.claimSettlementRatio}%` : null}
+              />
               <Field label="Cashless garages" value={policy.cashlessGarages ? policy.cashlessGarages.toLocaleString('en-IN') : null} />
             </div>
           </div>

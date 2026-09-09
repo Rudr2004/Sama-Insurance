@@ -45,7 +45,8 @@ export function PolicyInputSummary({ input }) {
           <Fact label="Policy type" value={getOptionLabel('policyType', input.policyType)} />
           <Fact label="Case type" value={getOptionLabel('caseType', input.caseType)} />
           <Fact label="NCB slab" value={input.ncb ? `${input.ncb}%` : null} />
-          <Fact label="IDV" value={input.idv ? `₹${input.idv}` : null} />
+          <Fact label="IDV" value={input.idv ? `₹${Number(input.idv).toLocaleString('en-IN')}` : null} />
+          <Fact label="Premium amount" value={input.premiumAmount ? `₹${Number(input.premiumAmount).toLocaleString('en-IN')}` : null} />
         </div>
 
         {addonBadges.length > 0 && (

@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 const TABS = [
   { to: '/agent', label: 'Commission Checker', end: true },
-  { to: '/agent/policies', label: 'Browse Policies' },
+  { to: '/agent/policies', label: 'Search Policies' },
 ];
 
 export function AgentLayout() {

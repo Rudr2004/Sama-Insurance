@@ -4,12 +4,7 @@ import { useToast } from '../../components/common/ToastContext.jsx';
 import { PolicyForm } from './PolicyForm.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Badge } from '../../components/common/Badge.jsx';
-import { getOptionLabel, getModelsForMake } from '../../config/parameters.js';
-
-function modelLabel(make, model) {
-  const found = getModelsForMake(make).find((m) => m.value === model);
-  return found ? found.label : model;
-}
+import { getOptionLabel } from '../../config/parameters.js';
 
 const ACCENTS = [
   { bar: 'bg-brand-500', chip: 'bg-brand-50 text-brand-700' },
@@ -45,7 +40,9 @@ export function PolicyCatalog() {
       togglePolicyActive(policy.id);
       toast.success(
         policy.active ? 'Policy unpublished' : 'Policy published',
-        policy.active ? `${policy.policyNumber} is now hidden from agents/users.` : `${policy.policyNumber} is now visible to agents/users.`
+        policy.active
+          ? `${policy.policyNumber} is now hidden from agents/users.`
+          : `${policy.policyNumber} is now visible to agents/users.`,
       );
     } catch (err) {
       toast.error('Could not update policy', err?.message);
@@ -59,7 +56,7 @@ export function PolicyCatalog() {
     if (!search.trim()) return state.policies;
     const q = search.trim().toLowerCase();
     return state.policies.filter((p) => {
-      const haystack = `${p.policyNumber} ${insurerName(p.insurerId)} ${getOptionLabel('vehicleMake', p.vehicleMake)} ${modelLabel(p.vehicleMake, p.vehicleModel)}`.toLowerCase();
+      const haystack = `${p.policyNumber} ${insurerName(p.insurerId)} ${getOptionLabel('vehicleClass', p.category)}`.toLowerCase();
       return haystack.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,12 +92,10 @@ export function PolicyCatalog() {
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Policy Catalog</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Issued policy certificates — vehicle, IDV, and premium detail, one record per policy.
-            </p>
+            <p className="text-sm text-slate-500 mt-0.5">Issued policy — vehicle, IDV, and premium detail, one record per policy.</p>
           </div>
           <Button variant="primary" onClick={() => setView({ mode: 'create' })}>
-            + Upload Policy Certificate
+            + Upload Policy
           </Button>
         </div>
 
@@ -153,7 +148,9 @@ export function PolicyCatalog() {
                     <div className="p-4 space-y-3.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${accent.chip}`}>
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${accent.chip}`}
+                          >
                             {(insurerShortCode(policy.insurerId) || insurerName(policy.insurerId)).charAt(0)}
                           </div>
                           <div className="min-w-0">
@@ -165,12 +162,10 @@ export function PolicyCatalog() {
                       </div>
 
                       <div>
-                        <p className="text-sm font-medium text-slate-800">
-                          {getOptionLabel('vehicleMake', policy.vehicleMake)} {modelLabel(policy.vehicleMake, policy.vehicleModel)}
-                          {policy.vehicleVariant ? ` (${policy.vehicleVariant})` : ''}
-                        </p>
+                        <p className="text-sm font-medium text-slate-800">{getOptionLabel('vehicleClass', policy.category)}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {getOptionLabel('fuelType', policy.fuelType)} · {policy.cubicCapacity ? `${policy.cubicCapacity}cc` : '—'} · {getOptionLabel('policyType', policy.policyType)}
+                          {getOptionLabel('fuelType', policy.fuelType)} · {policy.cubicCapacity ? `${policy.cubicCapacity}cc` : '—'} ·{' '}
+                          {getOptionLabel('policyType', policy.policyType)}
                         </p>
                       </div>
 
@@ -181,7 +176,9 @@ export function PolicyCatalog() {
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] uppercase tracking-wide text-slate-400">Final premium</p>
-                          <p className="text-lg font-bold text-slate-900 font-mono">₹{policy.premium.finalPremium.toLocaleString('en-IN')}</p>
+                          <p className="text-lg font-bold text-slate-900 font-mono">
+                            ₹{policy.premium.finalPremium.toLocaleString('en-IN')}
+                          </p>
                         </div>
                       </div>
 
