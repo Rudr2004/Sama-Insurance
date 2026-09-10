@@ -103,7 +103,7 @@ export function AgentPortal() {
 
       {results && submittedInput && (
         <>
-          <PolicyInputSummary input={submittedInput} />
+          <PolicyInputSummary input={submittedInput} insurers={state.insurers} />
 
           <Card>
             <CardHeader

@@ -228,9 +228,12 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
       isCngLpg: nextIsCngLpg,
       // Vehicles old enough to already carry a prior policy expose it as
       // lastPolicyIssueDate/lastPolicyType/lastNcb/lastZeroDepCover/
-      // lastPaOwnerCover/lastAgentId — auto-fill Policy Details, Addons &
-      // the servicing agent from that prior policy, and default to a
-      // renewal case since that's what a prior policy implies.
+      // lastPaOwnerCover/lastAgentId/lastInsurerId — auto-fill Policy
+      // Details, Addons, the servicing agent & prior insurer from that
+      // policy, and default to a renewal case since that's what it implies.
+      // previousInsurerId is kept separate from any "insurerId" field since
+      // the commission checker evaluates every insurer, not one chosen one —
+      // this only records which insurer the prior/expiring policy was with.
       ...(record.lastPolicyIssueDate
         ? {
             policyIssueDate: record.lastPolicyIssueDate,
@@ -239,6 +242,7 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
             ncb: record.lastNcb ?? value.ncb,
             zeroDepCover: record.lastZeroDepCover || value.zeroDepCover,
             paOwnerCover: record.lastPaOwnerCover || value.paOwnerCover,
+            previousInsurerId: record.lastInsurerId || value.previousInsurerId,
             ...(showAgentField && record.lastAgentId && agents?.some((a) => a.id === record.lastAgentId)
               ? { agentId: value.agentId || record.lastAgentId }
               : {}),
