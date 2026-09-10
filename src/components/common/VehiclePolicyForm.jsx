@@ -17,9 +17,9 @@ import {
 } from '../../config/parameters.js';
 import { lookupVehicleByRegNumber } from '../../data/rcLookupMock.js';
 import { calculateIdv } from '../../engine/calculateIdv.js';
-import { calculatePremium } from '../../engine/calculatePremium.js';
 import { FormField, Select, TextInput } from './FormField.jsx';
 import { Button } from './Button.jsx';
+import { SearchableSelect } from './SearchableSelect.jsx';
 import { useToast } from './ToastContext.jsx';
 import { UserRtoModal } from './UserRtoModal.jsx';
 
@@ -94,24 +94,6 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
         ? calculateIdv(modelSpec.exShowroomPrice, value.vehicleAge, { vehicleClass: value.vehicleClass })
         : null,
     [modelSpec, value.vehicleAge, value.vehicleClass]
-  );
-
-  // Premium is always derived, never manually typed — OD (IDV x rate, minus
-  // NCB) + TP (fixed IRDAI-tariff-structured slab by vehicle class/cc/GVW)
-  // + addon premiums, then 18% GST, same structure as a real policy schedule.
-  const premiumIdv = value.idv || estimatedIdv;
-  const calculatedPremium = useMemo(
-    () =>
-      calculatePremium({
-        vehicleClass: value.vehicleClass,
-        idv: premiumIdv,
-        cubicCapacity: value.cubicCapacity,
-        weightBand: value.weightBand,
-        ncb: value.ncb,
-        zeroDepCover: value.zeroDepCover,
-        paOwnerCover: value.paOwnerCover,
-      }),
-    [value.vehicleClass, premiumIdv, value.cubicCapacity, value.weightBand, value.ncb, value.zeroDepCover, value.paOwnerCover]
   );
 
   // GCV Weight Band (GVW) only applies to Goods Carrying vehicles — real
@@ -223,7 +205,7 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
     const recordFuelOptions = getFuelTypesForModel(record.vehicleMake, record.vehicleModel);
     const vehicleAge = calcAgeFromDate(record.registrationDate);
     const cngApplicable = recordFuelOptions.includes('cng') && record.fuelType !== 'cng';
-    const nextIsCngLpg = cngApplicable ? value.isCngLpg : 'no';
+    const nextIsCngLpg = cngApplicable ? record.lastIsCngLpg || value.isCngLpg : 'no';
     const idv = spec?.exShowroomPrice
       ? calculateIdv(spec.exShowroomPrice, vehicleAge, { vehicleClass: record.vehicleClass })
       : '';
@@ -244,8 +226,31 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
       idv: idv || value.idv,
       weightBand: spec?.weightBand ?? value.weightBand,
       isCngLpg: nextIsCngLpg,
+      // Vehicles old enough to already carry a prior policy expose it as
+      // lastPolicyIssueDate/lastPolicyType/lastNcb/lastZeroDepCover/
+      // lastPaOwnerCover/lastAgentId — auto-fill Policy Details, Addons &
+      // the servicing agent from that prior policy, and default to a
+      // renewal case since that's what a prior policy implies.
+      ...(record.lastPolicyIssueDate
+        ? {
+            policyIssueDate: record.lastPolicyIssueDate,
+            policyType: record.lastPolicyType || value.policyType,
+            caseType: value.caseType || 'renewal',
+            ncb: record.lastNcb ?? value.ncb,
+            zeroDepCover: record.lastZeroDepCover || value.zeroDepCover,
+            paOwnerCover: record.lastPaOwnerCover || value.paOwnerCover,
+            ...(showAgentField && record.lastAgentId && agents?.some((a) => a.id === record.lastAgentId)
+              ? { agentId: value.agentId || record.lastAgentId }
+              : {}),
+          }
+        : {}),
     });
-    toast.success('Vehicle found', `Auto-filled from RC lookup — every field below stays editable.`);
+    toast.success(
+      'Vehicle found',
+      record.lastPolicyIssueDate
+        ? 'Auto-filled from RC lookup, including its prior policy details — every field below stays editable.'
+        : 'Auto-filled from RC lookup — every field below stays editable.'
+    );
   };
 
   return (
@@ -410,32 +415,6 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
               placeholder="e.g. 507500"
             />
           </FormField>
-          <FormField
-            label="Premium Amount (₹)"
-            hint={
-              calculatedPremium
-                ? `OD ₹${calculatedPremium.odPremium.toLocaleString('en-IN')} + TP ₹${calculatedPremium.tpPremium.toLocaleString('en-IN')}${
-                    calculatedPremium.addonPremium ? ` + Addons ₹${calculatedPremium.addonPremium.toLocaleString('en-IN')}` : ''
-                  } + GST ₹${calculatedPremium.gstAmount.toLocaleString('en-IN')} — auto-calculated, not editable`
-                : 'Auto-calculated from IDV, vehicle class/cc & NCB — fill those in first'
-            }
-            infoTooltip={
-              'OD Premium = IDV × 3.5% × (1 − NCB Discount%)\n' +
-              'TP Premium = fixed IRDAI-tariff slab by vehicle class + cc/GVW\n' +
-              'Net Premium = OD + TP + Addon Premiums\n' +
-              '(Zero Dep Cover ₹3,500, PA Owner Cover ₹500, if opted)\n' +
-              'GST = Net Premium × 18%\n\n' +
-              'Premium Amount = Net Premium + GST'
-            }
-          >
-            <TextInput
-              type="text"
-              readOnly
-              disabled
-              value={calculatedPremium ? `₹${calculatedPremium.grossPremium.toLocaleString('en-IN')}` : ''}
-              placeholder="Auto-calculated"
-            />
-          </FormField>
         </div>
       </div>
 
@@ -474,19 +453,12 @@ export function VehiclePolicyForm({ value, onChange, agents, showAgentField = tr
             </>
           )}
           <FormField label="RTO (Vehicle)" required>
-            <Select
+            <SearchableSelect
               value={rtoType === 'vehicle' ? value.rto || '' : value.vehicleRto || ''}
-              onChange={(e) =>
-                rtoType === 'vehicle' ? set({ rto: e.target.value }) : set({ vehicleRto: e.target.value })
-              }
-            >
-              <option value="">Select RTO…</option>
-              {RTO_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
+              onChange={(rto) => (rtoType === 'vehicle' ? set({ rto }) : set({ vehicleRto: rto }))}
+              options={RTO_OPTIONS}
+              placeholder="Select RTO…"
+            />
           </FormField>
         </div>
 

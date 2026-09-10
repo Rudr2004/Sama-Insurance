@@ -3,6 +3,7 @@ import { StoreProvider, useStore } from './store/StoreContext.jsx';
 import { ToastProvider } from './components/common/ToastContext.jsx';
 import { RoleSwitcher } from './components/common/RoleSwitcher.jsx';
 import { Button } from './components/common/Button.jsx';
+import logo from './assets/logo.jpg';
 import { AdminLayout } from './pages/admin/AdminLayout.jsx';
 import { InsurerManagement } from './pages/admin/InsurerManagement.jsx';
 import { AgentManagement } from './pages/admin/AgentManagement.jsx';
@@ -20,9 +21,7 @@ function Header() {
     <header className="border-b border-slate-200 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
         <Link to="/agent" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">
-            CR
-          </div>
+          <img src={logo} alt="Sama Insurance" className="w-8 h-8 rounded-lg object-cover" />
           <div>
             <p className="font-semibold text-slate-900 leading-tight">Commission Rules Engine</p>
             {/* <p className="text-xs text-slate-400 leading-tight">Motor insurance POC</p> */}

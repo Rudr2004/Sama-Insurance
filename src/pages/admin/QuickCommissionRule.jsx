@@ -570,7 +570,7 @@ export function QuickCommissionRule() {
                   </div>
                   <p className="text-sm text-slate-600 font-mono mt-1.5 break-words">{summarizeRule(rule)}</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"
                     onClick={() => {
