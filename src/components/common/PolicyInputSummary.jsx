@@ -86,7 +86,7 @@ export function PolicyInputSummary({ input, insurers }) {
         subtitle="Quote generated for the following details."
         action={
           <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? 'Show less' : 'Show more'}
+            {expanded ? 'Hide Details' : 'Show Details'}
           </Button>
         }
       />
