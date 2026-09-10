@@ -5,7 +5,6 @@ const TABS = [
   { to: '/admin/agents', label: 'Agents' },
   { to: '/admin/policies', label: 'Policy Catalog' },
   { to: '/admin/quick-rule', label: 'Quick Commission Rule' },
-  { to: '/admin/rules', label: 'Commission Rules' },
   { to: '/admin/overrides', label: 'Agent Overrides' },
   { to: '/admin/simulate', label: 'Rule Simulator' },
 ];

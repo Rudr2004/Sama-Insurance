@@ -8,7 +8,6 @@ import { InsurerManagement } from './pages/admin/InsurerManagement.jsx';
 import { AgentManagement } from './pages/admin/AgentManagement.jsx';
 import { PolicyCatalog } from './pages/admin/PolicyCatalog.jsx';
 import { QuickCommissionRule } from './pages/admin/QuickCommissionRule.jsx';
-import { RuleList } from './pages/admin/RuleList.jsx';
 import { AgentOverrides } from './pages/admin/AgentOverrides.jsx';
 import { RuleSimulator } from './pages/admin/RuleSimulator.jsx';
 import { AgentLayout } from './pages/agent/AgentLayout.jsx';
@@ -59,7 +58,7 @@ function AppShell() {
             <Route path="agents" element={<AgentManagement />} />
             <Route path="policies" element={<PolicyCatalog />} />
             <Route path="quick-rule" element={<QuickCommissionRule />} />
-            <Route path="rules" element={<RuleList />} />
+            <Route path="rules" element={<Navigate to="/admin/quick-rule" replace />} />
             <Route path="overrides" element={<AgentOverrides />} />
             <Route path="simulate" element={<RuleSimulator />} />
           </Route>
